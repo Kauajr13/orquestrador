@@ -12,6 +12,12 @@ export type Contexto = {
   tarefa: Tarefa | null;
   /** Fontes lidas nesta execução, usadas depois pela checagem de originalidade. */
   fontesLidas: { url: string; texto: string }[];
+  /**
+   * Skills que o agente efetivamente carregou neste passo. É assim que
+   * `publicar_pagina` sabe se o texto passou pelo `humanizer`: a trava não
+   * confia na palavra do agente, confia no registro do que ele leu.
+   */
+  skillsCarregadas: Set<string>;
   registrar(nivel: NivelLog, mensagem: string): Promise<void>;
 };
 

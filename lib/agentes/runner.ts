@@ -46,6 +46,7 @@ export async function executarPasso(
     agente,
     tarefa,
     fontesLidas: [],
+    skillsCarregadas: new Set<string>(),
     registrar: (nivel, mensagem) =>
       registrarLog(supabase, {
         agente_id: agente.id,
