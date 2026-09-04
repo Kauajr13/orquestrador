@@ -74,7 +74,14 @@ Faltam três coisas fora do código:
 1. **Branch protection** na `main`: exigir PR e CI verde, sem push direto.
 2. **Segredos do GitHub Actions**: `URL_PRODUCAO`, `CRON_SECRET`,
    `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (os dois últimos só
-   para o backup diário).
+   para o backup diário), mais `VERCEL_TOKEN`, `VERCEL_ORG_ID` e
+   `VERCEL_PROJECT_ID` para os deploys.
+
+   O deploy **não** usa a integração Git da Vercel — a organização do GitHub
+   pertence a outra pessoa e o app da Vercel não pode ser instalado nela. Quem
+   faz preview e produção são os workflows `preview.yml` e `producao.yml`, com
+   um token da conta Vercel. O preview publica a URL como commit status, que é
+   o que o Revisor lê antes de aprovar.
 3. **Webhook do Telegram**, para os botões de aprovação funcionarem:
 
 ```bash
