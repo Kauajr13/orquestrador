@@ -175,6 +175,40 @@ export async function estadoDoCI(sha: string): Promise<"sucesso" | "falhou" | "r
     : "falhou";
 }
 
+/**
+ * URL do preview da Vercel para um commit. A Vercel publica isso como
+ * deployment status no próprio GitHub, então dá pra ler sem tocar na API dela.
+ *
+ * Serve para o Revisor não julgar só o diff: código gerado por modelo compila
+ * bem e quebra em runtime com frequência, e abrir a página é o jeito barato de
+ * pegar essa classe inteira de erro.
+ */
+export async function urlDePreview(sha: string): Promise<string | null> {
+  const statuses = await chamar<
+    Array<{ state: string; target_url: string | null; context: string }>
+  >(`/repos/${repo()}/commits/${sha}/statuses`).catch(() => []);
+
+  const vercel = statuses.find(
+    (s) => s.context.toLowerCase().includes("vercel") && s.state === "success",
+  );
+  return vercel?.target_url ?? null;
+}
+
+/** O preview responde? Não interessa o conteúdo, interessa não estar quebrado. */
+export async function previewResponde(
+  url: string,
+): Promise<{ ok: boolean; status: number | null }> {
+  try {
+    const r = await fetch(url, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(15_000),
+    });
+    return { ok: r.ok, status: r.status };
+  } catch {
+    return { ok: false, status: null };
+  }
+}
+
 export async function comentarNoPR(numero: number, texto: string): Promise<void> {
   await chamar(`/repos/${repo()}/issues/${numero}/comments`, {
     metodo: "POST",

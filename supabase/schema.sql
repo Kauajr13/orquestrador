@@ -345,3 +345,24 @@ begin
     end if;
   end loop;
 end $$;
+
+-- ---------------------------------------------------------------- aprovações
+
+-- Regra 9: PR que toca `supabase/` espera um humano. O Kauã decide pelo
+-- Telegram e a resposta cai aqui. Fica numa tabela própria, e não num campo da
+-- tarefa, porque a decisão é sobre o PR — que pode existir sem tarefa viva.
+create table if not exists aprovacoes (
+  id         uuid primary key default gen_random_uuid(),
+  pr_numero  int not null unique,
+  aprovado   boolean,
+  motivo     text,
+  criado_em  timestamptz not null default now(),
+  decidido_em timestamptz
+);
+
+-- A tabela acima nasce depois do bloco geral de RLS, então ganha a política
+-- aqui. Sem isto ela ficaria sem RLS e legível por qualquer chave anônima.
+alter table aprovacoes enable row level security;
+drop policy if exists leitura_autenticada_aprovacoes on aprovacoes;
+create policy leitura_autenticada_aprovacoes on aprovacoes
+  for select to authenticated using (true);
