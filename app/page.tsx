@@ -122,8 +122,11 @@ export default async function Pagina() {
         </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* `min-w-0` em todo item de grid: sem isso o `min-width: auto` padrão
+          impede o encolhimento, e a faixa rolável da sala estica a página
+          inteira no celular em vez de rolar sozinha. */}
+      <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
+        <div className="lg:col-span-2 min-w-0">
           <Sala
             agentesIniciais={e.agentes}
             tarefasIniciais={e.tarefas}

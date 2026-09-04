@@ -78,7 +78,7 @@ export function Sala({
     );
 
   return (
-    <div className="janela overflow-hidden">
+    <div className="janela overflow-hidden min-w-0 w-full">
       <SalaDoChefe acesa={escalado} />
 
       <div className="parede px-4 pt-4 pb-2 flex items-start justify-between gap-4">
