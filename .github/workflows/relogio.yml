@@ -1,0 +1,23 @@
+# O relógio do escritório.
+#
+# O cron nativo da Vercel, no plano Hobby, não garante disparo abaixo de uma
+# vez por dia — e o expediente precisa de um tick a cada 15 minutos pra
+# avançar tarefa aos poucos (a função da Vercel morre em 60s, não dá pra
+# fazer tudo de uma vez). Por isso quem dá o tick é o GitHub Actions, que
+# tem cron de verdade.
+name: relogio
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: chamar o expediente
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -X POST "${{ secrets.URL_PRODUCAO }}/api/cron/expediente" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

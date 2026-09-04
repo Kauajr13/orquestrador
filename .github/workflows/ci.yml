@@ -1,0 +1,96 @@
+# Este CI é a trava que protege as travas.
+#
+# O merge deste repositório é automático: um PR de "simplificação" que
+# remove um teste de testes/constituicao.test.ts, ou solta uma migration
+# destrutiva, pode parecer razoável pro Revisor e passar. Este workflow é a
+# segunda opinião que não deixa: ele reprova o PR mesmo com o Revisor
+# aprovando.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: configurar node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: instalar dependências
+        run: npm ci
+
+      - name: DDL destrutivo
+        run: npm run lint:sql
+
+      # O Next 16 gera os tipos de rota (LayoutProps, PageProps) em .next/types,
+      # que não é versionado. Sem isto o tsc reprova num runner limpo por não
+      # achar tipos que existem de verdade.
+      - name: gerar tipos de rota
+        run: npm run typegen
+
+      - name: tipos
+        run: npx tsc --noEmit
+
+      - name: testes (inclui a constituição)
+        run: npm test
+
+      - name: build de produção
+        run: npm run build
+
+      - name: scan de segredo
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.event.after }}"
+          fi
+
+          # arquivos tocados no diff, exceto o próprio workflow (senão ele
+          # acusa a si mesmo, que lista os padrões proibidos) e .md
+          ARQUIVOS=$(git diff --name-only "$BASE" "$HEAD" \
+            | grep -v '\.md$' \
+            | grep -v '^\.github/workflows/' || true)
+
+          ENCONTROU=0
+          for arquivo in $ARQUIVOS; do
+            [ -f "$arquivo" ] || continue
+            TRECHO=$(git diff "$BASE" "$HEAD" -- "$arquivo" \
+              | grep -nE '^\+' \
+              | grep -nE 'sk-[A-Za-z0-9]|ghp_[A-Za-z0-9]|github_pat_[A-Za-z0-9]|eyJ[A-Za-z0-9_=-]{20,}|console\.log\([^)]*process\.env' \
+              || true)
+            if [ -n "$TRECHO" ]; then
+              echo "possível segredo em $arquivo:"
+              echo "$TRECHO"
+              ENCONTROU=1
+            fi
+          done
+
+          if [ "$ENCONTROU" = "1" ]; then
+            echo "scan de segredo bloqueou o merge — padrão de chave encontrado no diff."
+            exit 1
+          fi
+          echo "OK — nenhum segredo encontrado no diff."
+
+      - name: licenças permitidas
+        continue-on-error: true
+        run: |
+          npx --yes license-checker-rseidelsohn --production --onlyAllow \
+            "MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;0BSD;CC0-1.0;Unlicense;Python-2.0;BlueOak-1.0.0"
+        # Informativo até a lista de licenças permitidas estar calibrada —
+        # um pacote transitivo com licença exótica não pode travar merge
+        # sozinho enquanto a lista ainda não foi validada contra o que o
+        # projeto de fato usa.

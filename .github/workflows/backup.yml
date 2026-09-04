@@ -1,0 +1,44 @@
+# O plano gratuito do Supabase não tem point-in-time recovery. Se um dado
+# some por engano — e não é por falta de trava, é regra 9 da constituição —
+# a única cópia que sobra é esta. Backup diário via PostgREST, commitado no
+# próprio repositório.
+name: backup
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 6h UTC = 3h em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: baixar código
+        uses: actions/checkout@v4
+
+      - name: baixar tabelas
+        run: |
+          mkdir -p backup
+
+          # consentimentos fica de fora: tem dado pessoal, e minimização de
+          # dado é regra de LGPD — um dump a mais num repo é cópia sem
+          # necessidade. execucoes fica de fora: é grande demais (guarda a
+          # conversa inteira de cada tarefa) pra caber num commit diário.
+          for tabela in agentes times memoria paginas diario atas metas config; do
+            curl --fail-with-body --silent --show-error \
+              "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/${tabela}?select=*" \
+              -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              -o "backup/${tabela}.json"
+          done
+
+      - name: commitar backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backup/
+          git diff --staged --quiet || git commit -m "backup: $(date -u +%Y-%m-%d)"
+          git push

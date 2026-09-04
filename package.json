@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:migrate": "node --env-file=.env.local --experimental-strip-types scripts/db-migrate.mts",
     "db:check": "node --env-file=.env.local --experimental-strip-types scripts/db-check.mts",
-    "lint:sql": "node --experimental-strip-types scripts/lint-sql.mts"
+    "lint:sql": "node --experimental-strip-types scripts/lint-sql.mts",
+    "typegen": "next typegen"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
