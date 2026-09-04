@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Escritório
 
-## Getting Started
+Uma empresa tocada por agentes de IA. Eles pesquisam, escrevem código, revisam o
+trabalho uns dos outros, publicam conteúdo e contratam colegas quando falta
+gente. O chefe é humano e só é chamado para o que exige uma pessoa de verdade.
 
-First, run the development server:
+O painel mostra tudo isso como um escritório 8-bit em tempo real.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> Codinome. O nome definitivo será proposto por um agente de branding, depois que
+> um agente de pesquisa escolher o nicho. Renomear o repositório no GitHub não
+> quebra nada.
+
+## Como funciona
+
+Um GitHub Actions bate na rota `/api/cron/expediente` a cada 15 minutos. Cada
+chamada faz **um pedaço** de trabalho e devolve o controle — função da Vercel
+morre em 60 segundos, e o raciocínio de um agente não cabe nisso. O estado fica
+salvo em `execucoes.conversa`, então o próximo tick continua de onde o anterior
+parou.
+
+Uma tarefa de código caminha assim:
+
+```
+pendente → em_andamento → em_revisao → concluída
+                       ↘ mudancas_pedidas ↗
+                       ↘ bloqueada → sobe pro superior → Telegram
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+O Revisor passa por quatro filtros antes de aprovar, e o parecer do modelo é o
+último de propósito, por ser o menos confiável dos quatro:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. mexeu em `supabase/`? espera aprovação humana
+2. o CI está verde?
+3. o preview da Vercel carrega?
+4. e só então a leitura do código
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Publicar conteúdo **não** passa por esse caminho: é uma linha na tabela
+`paginas`, sem build e sem deploy. Marketing não fica refém do ciclo de código,
+e conteúdo não derruba a aplicação.
 
-## Learn More
+## Regras que não se negociam
 
-To learn more about Next.js, take a look at the following resources:
+Estão em [CONSTITUICAO.md](CONSTITUICAO.md) — dez, cada uma com um teste em
+`testes/constituicao.test.ts` que prova que ela continua valendo. Um PR que
+enfraquece qualquer uma reprova no CI mesmo com o Revisor aprovando.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Isso existe porque o merge aqui é automático. Sem esses testes, as travas
+desapareceriam sozinhas ao longo de algumas semanas — não por sabotagem, mas por
+uma sequência de PRs de "simplificação" que pareceriam razoáveis um a um.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Rodando
 
-## Deploy on Vercel
+```bash
+npm install
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Sem variáveis de ambiente o painel abre em **modo demonstração**, com um
+escritório de mentira e o aviso na tela. Dá para trabalhar na interface inteira
+assim.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Ligando de verdade
+
+Copie `.env.example` para `.env.local` e preencha. Depois:
+
+```bash
+npm run db:migrate                          # cria o schema
+npm run db:migrate supabase/002-seed.sql    # contrata Gestor, Dev e Revisor
+npm run db:check                            # confere que as tabelas existem
+```
+
+Faltam três coisas fora do código:
+
+1. **Branch protection** na `main`: exigir PR e CI verde, sem push direto.
+2. **Segredos do GitHub Actions**: `URL_PRODUCAO`, `CRON_SECRET`,
+   `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (os dois últimos só
+   para o backup diário).
+3. **Webhook do Telegram**, para os botões de aprovação funcionarem:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d "url=https://<seu-dominio>/api/telegram/webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+```
+
+Comandos no Telegram: `/pausar`, `/voltar`, `/status`.
+
+## Comandos
+
+```bash
+npm run dev          # desenvolvimento
+npm run build        # build de produção
+npm test             # testes, inclusive os da constituição
+npm run typegen      # tipos de rota do Next (o CI roda antes do tsc)
+npm run lint:sql     # barra DDL destrutivo
+npm run db:migrate   # aplica supabase/schema.sql
+```
+
+Deploy: `vercel --prod` a partir da raiz do repositório, nunca de um worktree.
+
+## Onde as coisas ficam
+
+```
+app/            painel em /, site público em /site
+lib/agentes/    runner, prompt-base, ferramentas, hierarquia, revisão
+lib/ai/         camada de LLM — trocar de provedor é trocar env var
+lib/conformidade/  mascaramento de PII e checagem de originalidade
+skills/         ofício empacotado, um SKILL.md por pasta
+supabase/       schema e seed — território que exige aprovação humana
+testes/         a constituição
+```
+
+[AGENTS.md](AGENTS.md) é o manual que os próprios agentes leem para trabalhar
+aqui. É o arquivo que mais importa manter honesto: quando ele mente, todo mundo
+erra junto.
+
+## O que uma IA não faz
+
+Abrir CNPJ, passar por KYC, comprar, assinar contrato, registrar marca. Não é
+limitação técnica, é como o mundo funciona. Quando um agente esbarra nisso, ele
+usa `pedir_providencia` e o pedido chega no Telegram do chefe em horário
+comercial.

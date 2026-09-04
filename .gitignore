@@ -43,3 +43,6 @@ next-env.d.ts
 # claude code
 .claude/worktrees/
 .claude/settings.local.json
+
+# o exemplo entra no repo; os .env de verdade não
+!.env.example
