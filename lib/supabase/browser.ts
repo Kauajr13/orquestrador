@@ -11,3 +11,14 @@ export function supabaseDoNavegador() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 }
+
+/**
+ * No modo demonstração não há credencial, e tentar abrir o canal derrubaria a
+ * página inteira com um erro de client. A tela continua útil sem tempo real —
+ * ela só deixa de se atualizar sozinha.
+ */
+export function temSupabaseNoNavegador(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+}

@@ -118,7 +118,7 @@ export const anotarMemoria: Ferramenta = {
 
     if (error) throw new Error(error.message);
 
-    await ctx.registrar("sucesso", `${ctx.agente.nome} anotou "${chave}" na memória`);
+    await ctx.registrar("sucesso", `anotei "${chave}" na memória`);
     return `Anotado sob a chave "${chave}", com ${fontes.length} fonte(s).`;
   },
 };

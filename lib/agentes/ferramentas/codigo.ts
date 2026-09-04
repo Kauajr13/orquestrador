@@ -112,7 +112,7 @@ export const abrirPR: Ferramenta = {
       })
       .eq("id", ctx.tarefa.id);
 
-    await ctx.registrar("sucesso", `${ctx.agente.nome} abriu o PR #${pr.numero}: ${titulo}`);
+    await ctx.registrar("sucesso", `abri o PR #${pr.numero}: ${titulo}`);
 
     if (migration) {
       await ctx.supabase.from("notificacoes").insert({

@@ -62,7 +62,7 @@ export const criarTarefa: Ferramenta = {
 
     await ctx.registrar(
       "info",
-      `${ctx.agente.nome} criou a tarefa "${titulo}"${destinatario ? ` para ${destinatario.nome}` : ""}`,
+      `criei a tarefa "${titulo}"${destinatario ? ` para ${destinatario.nome}` : ""}`,
     );
 
     return `Tarefa criada (id ${data.id})${destinatario ? `, atribuída a ${destinatario.nome}` : ", na fila geral"}.`;
@@ -161,7 +161,7 @@ export const contratarAgente: Ferramenta = {
       justificativa: motivo,
     });
 
-    await ctx.registrar("sucesso", `${ctx.agente.nome} contratou ${nome} (${papel})`);
+    await ctx.registrar("sucesso", `contratei ${nome} como ${papel}`);
 
     // O Kauã fica sabendo, mas não precisa aprovar — ele escolheu que a empresa
     // contrata sozinha. Isto é aviso, não pedido.

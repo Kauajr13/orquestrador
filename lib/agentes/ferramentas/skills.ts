@@ -26,7 +26,7 @@ export const carregarSkill: Ferramenta = {
     const skill = await lerSkill(nome);
     ctx.skillsCarregadas.add(nome);
 
-    await ctx.registrar("info", `${ctx.agente.nome} carregou a skill ${nome}`);
+    await ctx.registrar("info", `carreguei a skill ${nome}`);
     return skill.conteudo;
   },
 };

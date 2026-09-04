@@ -205,7 +205,7 @@ async function executarFerramenta(
   }
 
   try {
-    await ctx.registrar("info", `${ctx.agente.nome} usou ${ferramenta.nome}`);
+    await ctx.registrar("info", `usei ${ferramenta.nome}`);
     const saida = await ferramenta.executar(argumentos, ctx);
     // Teto de tamanho: uma página inteira na conversa estoura o contexto e
     // encarece cada turno seguinte, porque a conversa é reenviada por completo.

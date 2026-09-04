@@ -49,7 +49,7 @@ export const pedirProvidencia: Ferramenta = {
 
     if (error) throw new Error(error.message);
 
-    await ctx.registrar("warn", `${ctx.agente.nome} pediu providência: ${assunto}`);
+    await ctx.registrar("warn", `pedi providência ao chefe: ${assunto}`);
 
     return urgencia === "critica"
       ? "Pedido enviado agora, por ser crítico. Siga trabalhando no que não depende disso."

@@ -95,7 +95,7 @@ export const publicarPagina: Ferramenta = {
 
     await ctx.registrar(
       "sucesso",
-      `${ctx.agente.nome} ${publicada ? "publicou" : "salvou como rascunho"} /${slug}`,
+      `${publicada ? "publiquei" : "salvei como rascunho"} /${slug}`,
     );
 
     return publicada
@@ -189,7 +189,7 @@ export const registrarMeta: Ferramenta = {
 
     await ctx.registrar(
       atingida ? "sucesso" : "info",
-      `${ctx.agente.nome} registrou progresso em "${meta.titulo}"`,
+      `registrei progresso em "${meta.titulo}"`,
     );
 
     return atingida
