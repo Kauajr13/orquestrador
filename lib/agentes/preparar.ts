@@ -48,9 +48,14 @@ async function metaAtiva(supabase: SupabaseClient): Promise<Meta | null> {
 }
 
 /**
- * A memória entra inteira no prompt, então tem teto. Quando passar disso, a
- * empresa vai precisar aprender a resumir a própria memória — e essa é uma
- * tarefa boa para ela mesma resolver.
+ * A memória entra inteira no prompt, então tem teto — e o teto é apertado de
+ * propósito.
+ *
+ * O free tier do Groq corta requisição acima de 8000 tokens por minuto, e o
+ * prompt já carrega o papel, os colegas, o índice de skills e o schema de 13
+ * ferramentas. Sobra pouco para a memória. Quando ela crescer além disso, a
+ * empresa vai precisar aprender a resumir a própria memória — e essa é uma boa
+ * tarefa para ela mesma resolver.
  */
 async function memoriaRecente(
   supabase: SupabaseClient,
@@ -59,10 +64,10 @@ async function memoriaRecente(
     .from("memoria")
     .select("chave, conteudo")
     .order("atualizado_em", { ascending: false })
-    .limit(15);
+    .limit(6);
 
   return (data ?? []).map((m) => ({
     chave: m.chave as string,
-    conteudo: String(m.conteudo).slice(0, 1500),
+    conteudo: String(m.conteudo).slice(0, 700),
   }));
 }

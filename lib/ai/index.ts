@@ -51,8 +51,10 @@ export async function conversar(
         ultimo = e;
 
         if (e instanceof AIErro) {
-          // Cota do modelo acabou: próximo da fila, sem esperar.
-          if (e.status === 429) break;
+          // Cota do modelo acabou (429) ou o prompt passou do teto de tokens
+          // por minuto daquele modelo (413): nos dois casos, insistir no mesmo
+          // modelo não muda nada. Próximo da fila, que tem cota e teto próprios.
+          if (e.status === 429 || e.status === 413) break;
           // Erro nosso (chave errada, payload inválido): trocar de modelo não
           // resolve, e insistir só queima o orçamento do tick.
           if (!e.valeRepetir) throw e;

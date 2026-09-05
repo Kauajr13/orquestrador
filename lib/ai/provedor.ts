@@ -44,6 +44,8 @@ const PRECOS: Array<{ prefixo: string; entrada: number; saida: number }> = [
   { prefixo: "codestral", entrada: 0.3, saida: 0.9 },
   { prefixo: "deepseek", entrada: 0.28, saida: 0.42 },
   { prefixo: "llama", entrada: 0.6, saida: 0.8 },
+  { prefixo: "gpt-oss-120b", entrada: 0.15, saida: 0.6 },
+  { prefixo: "gpt-oss-20b", entrada: 0.075, saida: 0.3 },
   { prefixo: "qwen", entrada: 0.4, saida: 1.2 },
 ];
 

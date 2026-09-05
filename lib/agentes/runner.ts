@@ -79,7 +79,7 @@ export async function executarPasso(
 
     let resposta;
     try {
-      resposta = await conversar(mensagens, {
+      resposta = await conversar(janela(mensagens), {
         ferramentas: declaradas.length ? declaradas : undefined,
         tipo: tipoDeTrabalho(agente),
         modelo: agente.modelo,
@@ -189,6 +189,35 @@ function declarar(f: Ferramenta): FerramentaDeclarada {
     type: "function",
     function: { name: f.nome, description: f.descricao, parameters: f.parametros },
   };
+}
+
+/** Quantas mensagens recentes seguem no prompt, além do começo da conversa. */
+const JANELA = 12;
+
+/**
+ * O que vai para o modelo: o começo da conversa mais as mensagens recentes.
+ *
+ * A conversa inteira é reenviada a cada turno, então ela cresce a cada passo e
+ * o prompt engorda junto. Provedor gratuito corta requisição acima de 8 mil
+ * tokens por minuto — sem esta janela, toda tarefa longa morre no meio, e a
+ * conta de uma tarefa paga cresce ao quadrado do número de passos.
+ *
+ * O histórico completo continua salvo em `execucoes.conversa`: o que se encurta
+ * é o que se manda, não o que se guarda.
+ */
+function janela(mensagens: Mensagem[]): Mensagem[] {
+  if (mensagens.length <= JANELA + 2) return mensagens;
+
+  // As duas primeiras são o system e a tarefa — sem elas o agente esquece quem
+  // é e o que estava fazendo.
+  const inicio = mensagens.slice(0, 2);
+  let recentes = mensagens.slice(-JANELA);
+
+  // Uma resposta com tool_calls precisa ser seguida dos resultados dela. Se o
+  // corte cair no meio desse par, a API recusa a conversa inteira.
+  while (recentes.length && recentes[0].role === "tool") recentes = recentes.slice(1);
+
+  return [...inicio, ...recentes];
 }
 
 function repetiuDemais(assinaturas: string[]): boolean {
