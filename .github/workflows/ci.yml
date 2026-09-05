@@ -28,6 +28,13 @@ jobs:
           node-version: 22
           cache: npm
 
+      # O runner vem com npm 10 e o lock foi gerado com o 11, que resolve as
+      # dependências nativas opcionais de outro jeito — o `npm ci` reclamava de
+      # pacotes "faltando no lock" que estão lá. Fixar a major resolve sem
+      # afrouxar o lock.
+      - name: fixar versão do npm
+        run: npm install -g npm@11
+
       - name: instalar dependências
         run: npm ci
 

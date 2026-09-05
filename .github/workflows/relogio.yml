@@ -19,5 +19,5 @@ jobs:
       - name: chamar o expediente
         run: |
           curl --fail-with-body --silent --show-error --max-time 120 \
-            -X POST "${{ secrets.URL_PRODUCAO }}/api/cron/expediente" \
+            "${{ secrets.URL_PRODUCAO }}/api/cron/expediente" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
