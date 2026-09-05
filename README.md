@@ -72,16 +72,13 @@ npm run db:check                            # confere que as tabelas existem
 Faltam três coisas fora do código:
 
 1. **Branch protection** na `main`: exigir PR e CI verde, sem push direto.
-2. **Segredos do GitHub Actions**: `URL_PRODUCAO`, `CRON_SECRET`,
-   `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SECRET_KEY` (os dois últimos só
-   para o backup diário), mais `VERCEL_TOKEN`, `VERCEL_ORG_ID` e
-   `VERCEL_PROJECT_ID` para os deploys.
+2. **Segredos do GitHub Actions**: `URL_PRODUCAO` e `CRON_SECRET` para o
+   relógio, mais `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SECRET_KEY` para o
+   backup diário.
 
-   O deploy **não** usa a integração Git da Vercel — a organização do GitHub
-   pertence a outra pessoa e o app da Vercel não pode ser instalado nela. Quem
-   faz preview e produção são os workflows `preview.yml` e `producao.yml`, com
-   um token da conta Vercel. O preview publica a URL como commit status, que é
-   o que o Revisor lê antes de aprovar.
+   O deploy usa a integração Git nativa da Vercel: preview em cada PR e
+   produção a cada push na `main`. É essa integração que publica o commit
+   status com a URL do preview, e é ele que o Revisor lê antes de aprovar.
 3. **Webhook do Telegram**, para os botões de aprovação funcionarem:
 
 ```bash
