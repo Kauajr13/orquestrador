@@ -28,6 +28,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Fixa a major para que o lock seja lido pela mesma versão que o gerou.
+      - name: fixar versão do npm
+        run: npm install -g npm@11
+
       - name: instalar dependências
         run: npm ci
 
