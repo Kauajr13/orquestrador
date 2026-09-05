@@ -1,26 +1,235 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+  Direção: um escritório noturno visto de frente, em corte. Não é arcade neon
+  nem isométrico genérico — a graça está no contraste entre um cenário parado e
+  caprichado e o movimento pequeno e constante dos funcionários.
+
+  Regras que valem em toda a interface:
+  - grid de 4px; tudo é múltiplo disso
+  - nada de canto arredondado, nada de sombra borrada
+  - profundidade vem de borda de 2px e de sombra dura deslocada
+  - cor é informação: verde é vida, ciano é dado, âmbar avisa, vermelho para
+  - o fundo nunca é #000; preto puro em tela OLED come o desenho
+*/
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-fundo: #0b0d10;
+  --color-parede: #151a21;
+  --color-piso: #1d242e;
+  --color-rodape: #10151b;
+  --color-linha: #2c3440;
+  --color-linha-forte: #3d4757;
+
+  --color-texto: #d7e0ea;
+  --color-suave: #8394a6;
+  --color-apagado: #5b6b7d;
+
+  --color-fosforo: #35f0a0;
+  --color-ciano: #4fd6ff;
+  --color-ambar: #ffb347;
+  --color-vermelho: #ff5a5a;
+  --color-magenta: #ff6ad5;
+
+  --font-pixel: var(--fonte-pixel), "Courier New", monospace;
+  --font-terminal: var(--fonte-terminal), "Courier New", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-fundo);
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-fundo);
+  color: var(--color-texto);
+  font-family: var(--font-pixel);
+  /* A fonte pixel só fica nítida em tamanho cheio; o antialiasing do sistema
+     borra as hastes de 1px. */
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  text-rendering: geometricPrecision;
+}
+
+img,
+svg {
+  image-rendering: pixelated;
+}
+
+/* -------------------------------------------------- animação de quadros
+
+   Os quadros de um sprite ficam empilhados e aparecem um de cada vez. Sem
+   timer em JavaScript: assim a animação obedece sozinha a quem pediu menos
+   movimento no sistema operacional. */
+
+.quadro {
+  opacity: 0;
+  animation-duration: var(--duracao, 2.4s);
+  animation-timing-function: steps(1, end);
+  animation-iteration-count: infinite;
+}
+
+.quadros-2 .quadro {
+  animation-name: mostrar-metade;
+}
+.quadros-4 .quadro {
+  animation-name: mostrar-quarto;
+}
+
+@keyframes mostrar-metade {
+  0%,
+  49.99% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes mostrar-quarto {
+  0%,
+  24.99% {
+    opacity: 1;
+  }
+  25%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* -------------------------------------------------- moldura de janela */
+
+.janela {
+  background: var(--color-parede);
+  border: 2px solid var(--color-linha);
+  box-shadow: 4px 4px 0 rgb(0 0 0 / 0.45);
+}
+
+.janela-titulo {
+  background: var(--color-linha);
+  color: var(--color-texto);
+  border-bottom: 2px solid var(--color-linha-forte);
+  padding: 4px 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* -------------------------------------------------- terminal */
+
+.terminal {
+  font-family: var(--font-terminal);
+  background: #07100c;
+  color: var(--color-fosforo);
+  position: relative;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+/* Scanlines a 2%: a olho nu vira textura, não listra. Acima disso a leitura
+   começa a cansar. */
+.terminal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.02) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+.cursor::after {
+  content: "▊";
+  animation: piscar 1.05s steps(1) infinite;
+}
+
+@keyframes piscar {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* -------------------------------------------------- cena */
+
+.parede {
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.015) 0 2px,
+      transparent 2px 24px
+    ),
+    var(--color-parede);
+}
+
+.piso {
+  background:
+    repeating-linear-gradient(
+      to right,
+      var(--color-linha) 0 2px,
+      transparent 2px 32px
+    ),
+    var(--color-piso);
+}
+
+/* A sala do chefe acende quando algo é escalado pra ele. */
+.sala-acesa {
+  border-color: var(--color-ambar);
+  box-shadow:
+    0 0 0 2px rgb(255 179 71 / 0.25),
+    4px 4px 0 rgb(0 0 0 / 0.45);
+}
+
+.brilho-vivo {
+  animation: respirar 2.6s ease-in-out infinite;
+}
+
+@keyframes respirar {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* -------------------------------------------------- acessibilidade
+
+   Quem pediu menos movimento no sistema recebe a cena parada, com o primeiro
+   quadro de cada sprite visível. A informação continua toda lá. */
+
+@media (prefers-reduced-motion: reduce) {
+  .quadro,
+  .cursor::after,
+  .brilho-vivo {
+    animation: none !important;
+  }
+  .quadro:first-child {
+    opacity: 1;
+  }
+  .quadro:not(:first-child) {
+    opacity: 0;
+  }
+}
+
+/* -------------------------------------------------- rolagem discreta */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-fundo);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-linha);
+  border: 2px solid var(--color-fundo);
 }
