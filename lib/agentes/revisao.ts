@@ -103,9 +103,12 @@ export async function revisar(
   // Código de modelo compila e quebra em runtime com frequência. Abrir a página
   // é barato e pega isso.
   const preview = await urlDePreview(pr.head.sha);
+  let notaDoPreview = "não havia preview";
+
   if (preview) {
     const resposta = await previewResponde(preview);
-    if (!resposta.ok) {
+
+    if (resposta.estado === "quebrado") {
       return await pedirMudancas(
         supabase,
         revisor,
@@ -113,6 +116,11 @@ export async function revisar(
         `O build passou, mas o preview não carrega (${resposta.status ?? "sem resposta"}): ${preview}. Alguma coisa quebra em runtime.`,
       );
     }
+
+    notaDoPreview =
+      resposta.estado === "ok"
+        ? "carrega"
+        : "existe, mas está atrás da proteção da Vercel — não deu para verificar";
   }
 
   const diff = (await diffDoPR(tarefa.pr_numero)).slice(0, 30_000);
@@ -126,7 +134,7 @@ export async function revisar(
     `\n# O que já foi verificado por máquina
 
 - CI: verde (tipos, testes da constituição, build, DDL, segredo)
-- Preview: ${preview ? "carrega" : "não havia preview"}
+- Preview: ${notaDoPreview}
 
 Não repita esses testes. Olhe o que só uma leitura pega: a mudança faz o que a
 descrição diz? Quebra alguma trava? Introduz erro de lógica? Está no lugar certo?`,

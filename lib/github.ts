@@ -194,18 +194,39 @@ export async function urlDePreview(sha: string): Promise<string | null> {
   return vercel?.target_url ?? null;
 }
 
-/** O preview responde? Não interessa o conteúdo, interessa não estar quebrado. */
+/**
+ * O preview responde? Não interessa o conteúdo, interessa não estar quebrado.
+ *
+ * Três respostas possíveis, e a do meio é a que evita um estrago: quando a
+ * proteção de deployment da Vercel está ligada, todo preview devolve redirect
+ * para o login. Tratar isso como "não carrega" faria o Revisor reprovar todos
+ * os PRs por um motivo que não tem nada a ver com o código — e o mais grave é
+ * que pareceria um problema real do PR.
+ */
 export async function previewResponde(
   url: string,
-): Promise<{ ok: boolean; status: number | null }> {
+): Promise<{ estado: "ok" | "protegido" | "quebrado"; status: number | null }> {
   try {
     const r = await fetch(url, {
-      redirect: "follow",
+      redirect: "manual",
       signal: AbortSignal.timeout(15_000),
     });
-    return { ok: r.ok, status: r.status };
+
+    if (r.status >= 300 && r.status < 400) {
+      const destino = r.headers.get("location") ?? "";
+      if (/vercel\.com\/(sso|login)|\/\.well-known\/vercel/.test(destino)) {
+        return { estado: "protegido", status: r.status };
+      }
+      // Redirect da própria aplicação (o painel manda para /login) é sinal de
+      // que ela está de pé e respondendo.
+      return { estado: "ok", status: r.status };
+    }
+
+    if (r.status === 401 || r.status === 403) return { estado: "protegido", status: r.status };
+
+    return { estado: r.ok ? "ok" : "quebrado", status: r.status };
   } catch {
-    return { ok: false, status: null };
+    return { estado: "quebrado", status: null };
   }
 }
 
