@@ -20,7 +20,7 @@ export const buscarWeb: Ferramenta = {
       consulta: { type: "string", description: "O que procurar, em linguagem natural" },
       quantidade: {
         type: "number",
-        description: "Quantos resultados (1 a 10, padrão 5)",
+        description: "Quantos resultados (1 a 6, padrão 4)",
       },
     },
     required: ["consulta"],
@@ -33,7 +33,7 @@ export const buscarWeb: Ferramenta = {
     const consulta = String(args.consulta ?? "").trim();
     if (!consulta) throw new Error("consulta vazia");
 
-    const quantidade = Math.min(Math.max(Number(args.quantidade) || 5, 1), 10);
+    const quantidade = Math.min(Math.max(Number(args.quantidade) || 4, 1), 6);
 
     const r = await fetch(TAVILY, {
       method: "POST",
@@ -65,7 +65,7 @@ export const buscarWeb: Ferramenta = {
     }
 
     const texto = achados
-      .map((a, i) => `${i + 1}. ${a.title ?? "sem título"}\n   ${a.url}\n   ${a.content ?? ""}`)
+      .map((a, i) => `${i + 1}. ${a.title ?? "sem título"}\n   ${a.url}\n   ${(a.content ?? "").slice(0, 350)}`)
       .join("\n\n");
 
     return envelopeNaoConfiavel(`busca: ${consulta}`, texto);
@@ -119,7 +119,7 @@ export const lerPagina: Ferramenta = {
     }
 
     const html = await r.text();
-    const texto = extrairTexto(html).slice(0, 20_000);
+    const texto = extrairTexto(html).slice(0, 5_000);
 
     ctx.fontesLidas.push({ url: url.href, texto });
 

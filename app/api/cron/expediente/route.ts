@@ -188,6 +188,31 @@ async function tentarTrabalhar(
       }
 
       if (r.fim === "continua") {
+        // Continuar sem ter dado nenhum passo quer dizer que o tick inteiro foi
+        // gasto batendo em alguma parede — cota, teto de tokens, provedor fora
+        // do ar. Uma vez é normal e o próximo tick resolve; muitas vezes
+        // seguidas é uma tarefa presa em laço, e ficaria assim para sempre sem
+        // ninguém perceber. Depois de algumas, sobe para o superior.
+        if (r.passos === tarefa.passos) {
+          const travas = tarefa.tentativas + 1;
+          if (travas >= 5) {
+            await falharOuEscalar(
+              supabase,
+              tarefa,
+              agente,
+              "cinco ticks seguidos sem conseguir avançar um passo — provavelmente a conversa ficou grande demais para o teto do provedor",
+              r.passos,
+            );
+            await supabase.from("agentes").update({ status: "error" }).eq("id", agente.id);
+            return { agente: agente.nome, tarefa: tarefa.titulo, fim: "presa" };
+          }
+          await supabase
+            .from("tarefas")
+            .update({ status: "pendente", tentativas: travas, lock_ate: null })
+            .eq("id", tarefa.id);
+          return { agente: agente.nome, tarefa: tarefa.titulo, fim: "sem_avanco", travas };
+        }
+
         await devolverParaFila(supabase, tarefa, r.passos);
         await supabase.from("agentes").update({ status: "working" }).eq("id", agente.id);
         return { agente: agente.nome, tarefa: tarefa.titulo, fim: "continua", passos: r.passos };

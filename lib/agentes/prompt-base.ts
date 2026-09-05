@@ -84,9 +84,13 @@ esbarrar nisso, use \`pedir_providencia\` e siga trabalhando no que não depende
 disso. Nunca finja que fez, nunca invente que está feito.`);
 
   if (ferramentasDisponiveis.length) {
+    // Só os nomes: a descrição de cada ferramenta já vai no schema que acompanha
+    // a requisição, e repetir aqui dobrava esse custo em todo turno. Com teto de
+    // 8 mil tokens por minuto no provedor gratuito, essa duplicação sozinha
+    // travava o agente no segundo passo.
     partes.push(`# Suas ferramentas
 
-${ferramentasDisponiveis.map((f) => `- \`${f.nome}\` — ${f.descricao}`).join("\n")}`);
+${ferramentasDisponiveis.map((f) => `\`${f.nome}\``).join(", ")}`);
   }
 
   if (ferramentasQueNaoTem.length) {

@@ -261,9 +261,11 @@ async function executarFerramenta(
   try {
     await ctx.registrar("info", `usei ${ferramenta.nome}`);
     const saida = await ferramenta.executar(argumentos, ctx);
-    // Teto de tamanho: uma página inteira na conversa estoura o contexto e
-    // encarece cada turno seguinte, porque a conversa é reenviada por completo.
-    return saida.length > 12_000 ? `${saida.slice(0, 12_000)}\n[…truncado]` : saida;
+    // Teto de tamanho, e ele precisa ser apertado: a conversa é reenviada
+    // inteira a cada turno, então um resultado grande não pesa uma vez — pesa
+    // em todos os turnos seguintes. Um único retorno de 12 mil caracteres foi
+    // suficiente para travar o agente contra o limite de tokens por minuto.
+    return saida.length > 4_000 ? `${saida.slice(0, 4_000)}\n[…truncado]` : saida;
   } catch (e) {
     const motivo = (e as Error).message;
     await ctx.registrar("erro", `${ferramenta.nome} falhou: ${motivo}`);
