@@ -216,6 +216,32 @@ const JANELA = 6;
 function janela(mensagens: Mensagem[]): Mensagem[] {
   if (mensagens.length <= JANELA + 2) return mensagens;
 
+  // O que saiu da janela vira uma linha de resumo. Sem isso o agente repete
+  // trabalho que já fez — foi visto carregando a mesma skill duas vezes e
+  // refazendo buscas — e cada repetição custa um passo e um pedaço da cota.
+  const cortadas = mensagens.slice(2, -JANELA);
+  const usadas = new Map<string, number>();
+  for (const m of cortadas) {
+    if (m.role === "assistant" && m.tool_calls) {
+      for (const c of m.tool_calls) {
+        usadas.set(c.function.name, (usadas.get(c.function.name) ?? 0) + 1);
+      }
+    }
+  }
+
+  const resumo: Mensagem[] = usadas.size
+    ? [
+        {
+          role: "user",
+          content: `[resumo do que você já fez nesta tarefa, antes do trecho abaixo: ${[
+            ...usadas,
+          ]
+            .map(([nome, n]) => (n > 1 ? `${nome} ${n}x` : nome))
+            .join(", ")}. Não repita o que já está feito; siga de onde parou.]`,
+        },
+      ]
+    : [];
+
   // As duas primeiras são o system e a tarefa — sem elas o agente esquece quem
   // é e o que estava fazendo.
   const inicio = mensagens.slice(0, 2);
@@ -225,7 +251,7 @@ function janela(mensagens: Mensagem[]): Mensagem[] {
   // corte cair no meio desse par, a API recusa a conversa inteira.
   while (recentes.length && recentes[0].role === "tool") recentes = recentes.slice(1);
 
-  return [...inicio, ...recentes];
+  return [...inicio, ...resumo, ...recentes];
 }
 
 function repetiuDemais(assinaturas: string[]): boolean {
