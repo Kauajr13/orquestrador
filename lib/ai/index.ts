@@ -1,11 +1,11 @@
 import type { Mensagem, RespostaDoModelo } from "@/lib/tipos";
-import { provedorPara, type TipoDeTrabalho } from "./bai";
+import { provedorPara, type TipoDeTrabalho } from "./provedor";
 import { AIErro, type OpcoesDeConversa } from "./tipos";
 
 export { AIErro } from "./tipos";
 export type { FerramentaDeclarada, OpcoesDeConversa } from "./tipos";
-export { provedorPara } from "./bai";
-export type { TipoDeTrabalho } from "./bai";
+export { provedorPara } from "./provedor";
+export type { TipoDeTrabalho } from "./provedor";
 
 const TENTATIVAS = 3;
 const ESPERA_BASE_MS = 1000;

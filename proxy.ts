@@ -15,7 +15,7 @@ const PUBLICAS = ["/login", "/auth", "/site", "/privacidade", "/termos", "/sitem
 
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   // Sem credencial o painel roda em modo demonstração, com dados de mentira.
   // Bloquear aqui só esconderia a interface de quem está construindo ela.

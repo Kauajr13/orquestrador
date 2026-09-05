@@ -73,7 +73,7 @@ Faltam três coisas fora do código:
 
 1. **Branch protection** na `main`: exigir PR e CI verde, sem push direto.
 2. **Segredos do GitHub Actions**: `URL_PRODUCAO`, `CRON_SECRET`,
-   `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (os dois últimos só
+   `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SECRET_KEY` (os dois últimos só
    para o backup diário), mais `VERCEL_TOKEN`, `VERCEL_ORG_ID` e
    `VERCEL_PROJECT_ID` para os deploys.
 
