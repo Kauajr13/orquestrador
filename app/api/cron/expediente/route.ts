@@ -23,6 +23,9 @@ import { despacharNotificacoes } from "@/lib/telegram";
 import type { Agente, Tarefa } from "@/lib/tipos";
 
 export const dynamic = "force-dynamic";
+// No App Router o teto de duração se declara aqui, e não no bloco `functions`
+// do vercel.json — aquele só enxerga funções na pasta `api/` fora do framework,
+// e apontar para um route.ts faz o build inteiro falhar.
 export const maxDuration = 60;
 
 /**
