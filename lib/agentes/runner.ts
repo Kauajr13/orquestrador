@@ -191,8 +191,16 @@ function declarar(f: Ferramenta): FerramentaDeclarada {
   };
 }
 
-/** Quantas mensagens recentes seguem no prompt, além do começo da conversa. */
-const JANELA = 12;
+/**
+ * Quantas mensagens recentes seguem no prompt, além do começo da conversa.
+ *
+ * Seis, e não mais, porque o orçamento é apertado: medindo uma conversa real,
+ * o prompt do sistema levava 1300 tokens, os schemas das ferramentas outros
+ * 2500, e cada resultado de ferramenta perto de 600. Com doze mensagens a
+ * requisição passava dos 8 mil tokens por minuto que o provedor gratuito
+ * concede, e o agente parava de avançar.
+ */
+const JANELA = 6;
 
 /**
  * O que vai para o modelo: o começo da conversa mais as mensagens recentes.
@@ -265,7 +273,7 @@ async function executarFerramenta(
     // inteira a cada turno, então um resultado grande não pesa uma vez — pesa
     // em todos os turnos seguintes. Um único retorno de 12 mil caracteres foi
     // suficiente para travar o agente contra o limite de tokens por minuto.
-    return saida.length > 4_000 ? `${saida.slice(0, 4_000)}\n[…truncado]` : saida;
+    return saida.length > 2_500 ? `${saida.slice(0, 2_500)}\n[…truncado]` : saida;
   } catch (e) {
     const motivo = (e as Error).message;
     await ctx.registrar("erro", `${ferramenta.nome} falhou: ${motivo}`);
