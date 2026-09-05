@@ -192,8 +192,20 @@ export const registrarMeta: Ferramenta = {
       `registrei progresso em "${meta.titulo}"`,
     );
 
+    if (atingida) {
+      // Aviso, não bloqueio — o Kauã escolheu autonomia. Mas fechar uma fase da
+      // empresa é decisão grande demais para acontecer em silêncio, e é onde o
+      // otimismo de um agente custa mais caro: dar por resolvido o que não foi
+      // faz a empresa inteira seguir para a fase seguinte em cima de nada.
+      await ctx.supabase.from("notificacoes").insert({
+        texto: `${ctx.agente.nome} deu a meta "${meta.titulo}" por atingida.\n\nEvidência:\n${evidencia.slice(0, 800)}\n\nSe isso não se sustenta, responda /pausar e me diga.`,
+        urgencia: "normal",
+        tarefa_id: ctx.tarefa?.id ?? null,
+      });
+    }
+
     return atingida
-      ? `Meta "${meta.titulo}" marcada como atingida. O Gestor precisa ativar a próxima.`
+      ? `Meta "${meta.titulo}" marcada como atingida, e o chefe foi avisado. O Gestor precisa ativar a próxima.`
       : "Progresso registrado.";
   },
 };

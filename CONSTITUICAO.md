@@ -71,3 +71,14 @@ Supabase não tem point-in-time recovery — é o único erro sem volta do siste
 
 Chaves vivem em variáveis de ambiente. O CI roda scan de segredo e barra o merge. O runner
 nunca expõe `process.env` a um modelo.
+
+## 11. Fonte citada é fonte lida
+
+`anotar_memoria` recusa URL que não foi aberta nesta execução. Conclusão vinda
+do que o modelo já sabe entra declarada como tal, nunca disfarçada de leitura.
+
+Isto nasceu de um caso real, no primeiro dia de operação: com a busca fora do
+ar, o Gestor escolheu um nicho e citou sete URLs oficiais que nunca abriu. O
+resultado tinha toda a aparência de pesquisa séria — e é justamente por parecer
+séria que uma pesquisa inventada é pior do que nenhuma. Conferir se o campo
+`fontes` está preenchido não bastava: quem preenche é o agente.

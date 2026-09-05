@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { conversar, type FerramentaDeclarada } from "@/lib/ai";
+import { AIErro, conversar, type FerramentaDeclarada } from "@/lib/ai";
 import { podeGastar } from "@/lib/caixa";
 import { registrarLog } from "@/lib/log";
 import type { Agente, Execucao, Mensagem, Tarefa } from "@/lib/tipos";
@@ -77,11 +77,36 @@ export async function executarPasso(
       };
     }
 
-    const resposta = await conversar(mensagens, {
-      ferramentas: declaradas.length ? declaradas : undefined,
-      tipo: tipoDeTrabalho(agente),
-      modelo: agente.modelo,
-    });
+    let resposta;
+    try {
+      resposta = await conversar(mensagens, {
+        ferramentas: declaradas.length ? declaradas : undefined,
+        tipo: tipoDeTrabalho(agente),
+        modelo: agente.modelo,
+      });
+    } catch (e) {
+      // Free tier limita requisições por minuto, e um agente pensando com
+      // ferramentas faz várias chamadas seguidas. Bater no teto não é erro do
+      // agente nem motivo para contar tentativa: guardamos o que já foi
+      // raciocinado e o próximo tick continua, quinze minutos depois, com a
+      // cota recuperada. É para isto que a execução é retomável.
+      if (e instanceof AIErro && (e.status === 429 || e.status === 503)) {
+        await salvar(supabase, execucao.id, mensagens, {
+          tokensEntrada,
+          tokensSaida,
+          custo,
+          encerrada: false,
+        });
+        await ctx.registrar(
+          "warn",
+          e.status === 429
+            ? "bati no limite de requisições do provedor; continuo no próximo tick"
+            : "provedor sobrecarregado; continuo no próximo tick",
+        );
+        return { fim: "continua", passos };
+      }
+      throw e;
+    }
 
     passos += 1;
     tokensEntrada += resposta.tokensEntrada;

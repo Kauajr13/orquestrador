@@ -105,6 +105,24 @@ export const anotarMemoria: Ferramenta = {
       );
     }
 
+    // Fonte citada tem que ser fonte lida.
+    //
+    // Isto nasceu de um caso real: com a busca fora do ar, o Gestor escolheu um
+    // nicho e citou sete URLs oficiais que ele nunca abriu. Vieram da memória do
+    // modelo, e o resultado tinha toda a aparência de pesquisa séria. Conferir
+    // o campo `fontes` não bastava — ele é preenchido pelo próprio agente.
+    // Agora vale o registro do que foi de fato lido nesta execução.
+    const lidas = new Set(ctx.fontesLidas.map((f) => f.url));
+    const naoLidas = fontes.filter(
+      (f) => /^https?:\/\//i.test(f) && !lidas.has(f),
+    );
+
+    if (naoLidas.length) {
+      throw new Error(
+        `você não leu estas fontes nesta execução: ${naoLidas.slice(0, 3).join(", ")}. Cite só o que abriu com ler_pagina ou buscar_web. Se a conclusão vem do que você já sabe, escreva isso na fonte em vez de inventar um link — e diga na anotação que ainda falta verificar.`,
+      );
+    }
+
     const { error } = await ctx.supabase.from("memoria").upsert(
       {
         chave,

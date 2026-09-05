@@ -65,13 +65,24 @@ function nomeDoProvedor(baseUrl: string): string {
   }
 }
 
-export function provedorPara(tipo: TipoDeTrabalho, modeloForcado?: string | null) {
+/**
+ * A fila de modelos para um tipo de trabalho.
+ *
+ * As variáveis aceitam uma lista separada por vírgula, e não um modelo só,
+ * porque free tier costuma limitar por modelo e por dia — no Gemini são cerca
+ * de 20 requisições diárias para cada um. Um modelo sozinho não sustenta nem
+ * uma tarefa; quatro deles somados sustentam o dia de trabalho de uma empresa
+ * pequena. Quando um esgota, o `conversar()` passa para o próximo da fila.
+ *
+ * Com provedor pago isso não atrapalha: basta listar um modelo só.
+ */
+export function provedoresPara(tipo: TipoDeTrabalho, modeloForcado?: string | null) {
   const baseUrl = process.env.LLM_BASE_URL;
   const apiKey = process.env.LLM_API_KEY ?? "";
 
   if (!baseUrl) {
     throw new AIErro(
-      "Defina LLM_BASE_URL (ex.: https://api.mistral.ai/v1)",
+      "Defina LLM_BASE_URL (ex.: https://generativelanguage.googleapis.com/v1beta/openai)",
       400,
       "llm",
     );
@@ -80,13 +91,13 @@ export function provedorPara(tipo: TipoDeTrabalho, modeloForcado?: string | null
   const nome = nomeDoProvedor(baseUrl);
   if (!apiKey) throw new AIErro("LLM_API_KEY ausente no ambiente", 401, nome);
 
-  const modelo =
+  const bruto =
     modeloForcado ||
     (tipo === "caro"
       ? process.env.LLM_MODELO_CARO
       : process.env.LLM_MODELO_BARATO ?? process.env.LLM_MODELO_CARO);
 
-  if (!modelo) {
+  if (!bruto) {
     throw new AIErro(
       "Defina LLM_MODELO_CARO (e de preferência LLM_MODELO_BARATO) no ambiente",
       400,
@@ -94,14 +105,25 @@ export function provedorPara(tipo: TipoDeTrabalho, modeloForcado?: string | null
     );
   }
 
-  const preco = precoDe(modelo);
+  const modelos = bruto
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
 
-  return new ProvedorCompat({
-    nome,
-    baseUrl,
-    apiKey,
-    modelo,
-    precoEntrada: preco.entrada,
-    precoSaida: preco.saida,
+  return modelos.map((modelo) => {
+    const preco = precoDe(modelo);
+    return new ProvedorCompat({
+      nome,
+      baseUrl,
+      apiKey,
+      modelo,
+      precoEntrada: preco.entrada,
+      precoSaida: preco.saida,
+    });
   });
+}
+
+/** Compatibilidade: o primeiro da fila. */
+export function provedorPara(tipo: TipoDeTrabalho, modeloForcado?: string | null) {
+  return provedoresPara(tipo, modeloForcado)[0];
 }

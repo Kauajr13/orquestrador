@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { anotarMemoria } from "@/lib/agentes/ferramentas/banco";
 import { contratarAgente } from "@/lib/agentes/ferramentas/organizacao";
 import { publicarPagina } from "@/lib/agentes/ferramentas/publicacao";
 import { estaPausado } from "@/lib/agentes/jornada";
@@ -283,6 +284,53 @@ describe("regra 9 — migration não entra sozinha", () => {
 
     await fs.rm(pasta, { recursive: true, force: true });
     expect(barrou).toBe(true);
+  });
+});
+
+describe("regra 11 — fonte citada é fonte lida", () => {
+  it("recusa URL que o agente não abriu nesta execução", async () => {
+    const ctx = contextoFake({ fontesLidas: [] });
+
+    await expect(
+      anotarMemoria.executar(
+        {
+          chave: "escolha-de-nicho",
+          conteudo: "O nicho escolhido é climatização, por causa da obrigatoriedade legal.",
+          fontes: ["https://www.planalto.gov.br/ccivil_03/lei/l13589.htm"],
+        },
+        ctx,
+      ),
+    ).rejects.toThrow(/não leu estas fontes/i);
+  });
+
+  it("aceita quando a fonte foi realmente lida", async () => {
+    const url = "https://exemplo.com/estudo";
+    const ctx = contextoFake({
+      supabase: supabaseFake({ memoria: [] }),
+      fontesLidas: [{ url, texto: "conteúdo qualquer" }],
+    });
+
+    await expect(
+      anotarMemoria.executar(
+        { chave: "teste", conteudo: "Uma conclusão apoiada em leitura.", fontes: [url] },
+        ctx,
+      ),
+    ).resolves.toMatch(/anotado/i);
+  });
+
+  it("deixa passar fonte que não é URL, para raciocínio declarado como tal", async () => {
+    const ctx = contextoFake({ supabase: supabaseFake({ memoria: [] }) });
+
+    await expect(
+      anotarMemoria.executar(
+        {
+          chave: "teste",
+          conteudo: "Conclusão minha, ainda sem verificação.",
+          fontes: ["análise própria a partir das tarefas já concluídas"],
+        },
+        ctx,
+      ),
+    ).resolves.toMatch(/anotado/i);
   });
 });
 
