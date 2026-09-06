@@ -1,0 +1,7 @@
+[{"chave":"pausado","valor":"false","atualizado_em":"2026-09-05T03:15:46.711101+00:00"}, 
+ {"chave":"teto_tarefas_dia","valor":"20","atualizado_em":"2026-09-05T03:15:46.711101+00:00"}, 
+ {"chave":"teto_tokens_dia","valor":"5000000","atualizado_em":"2026-09-05T03:15:46.711101+00:00"}, 
+ {"chave":"fuso","valor":"America/Sao_Paulo","atualizado_em":"2026-09-05T03:15:46.711101+00:00"}, 
+ {"chave":"expediente_inicio","valor":"0","atualizado_em":"2026-09-05T03:15:46.711101+00:00"}, 
+ {"chave":"expediente_fim","valor":"24","atualizado_em":"2026-09-05T03:15:46.711101+00:00"}, 
+ {"chave":"teto_passos_tarefa","valor":"40","atualizado_em":"2026-09-05T03:15:46.711101+00:00"}]
