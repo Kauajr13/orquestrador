@@ -33,6 +33,15 @@ export type Ferramenta = {
    * lembrar de checar.
    */
   custa?: boolean;
+  /**
+   * Quanto desta ferramenta cabe na conversa, em caracteres.
+   *
+   * O teto geral é apertado porque a conversa é reenviada a cada turno. Mas
+   * para leitura de arquivo ele impedia o trabalho: com 2500 caracteres o Dev
+   * via 42% de `app/page.tsx`, lia de novo procurando o resto, e nunca
+   * conseguia montar o conteúdo completo que `abrir_pr` exige.
+   */
+  tetoResposta?: number;
   executar(argumentos: Record<string, unknown>, ctx: Contexto): Promise<string>;
 };
 
