@@ -9,22 +9,26 @@
 -- sem problema: se ambos chamarem junto, o lock otimista da fila garante que só
 -- um agente pega a tarefa, e o outro volta sem fazer nada.
 --
--- Rodar uma vez: npm run db:migrate supabase/003-despertador.sql
--- Depois é preciso preencher a tabela `segredos` com url_producao e cron_secret.
+-- Rodar: npm run db:migrate supabase/003-despertador.sql
+-- Depois, preencher interno.segredos com url_producao e cron_secret.
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- Tabela sem policy de leitura de propósito: guarda o segredo do cron, e nem o
--- painel autenticado precisa enxergar isso. Só a service_role e o próprio
--- Postgres alcançam.
-create table if not exists segredos (
+-- Schema próprio, e não `public`, porque o Supabase expõe o public inteiro pela
+-- API. Aqui mora o segredo do cron: fora do alcance de qualquer chave de
+-- cliente, e legível pelo Postgres, que é quem precisa.
+--
+-- A primeira versão disto usava uma tabela em public com RLS e nenhuma policy.
+-- Parecia mais seguro e era pior: o próprio job do pg_cron não conseguia ler, a
+-- URL vinha nula e o despertador falhava calado.
+create schema if not exists interno;
+
+create table if not exists interno.segredos (
   chave text primary key,
   valor text not null,
   atualizado_em timestamptz not null default now()
 );
-
-alter table segredos enable row level security;
 
 -- Recria os agendamentos de forma idempotente: rodar este arquivo duas vezes
 -- não deixa job duplicado.
@@ -47,10 +51,10 @@ select cron.schedule(
   '*/15 * * * *',
   $job$
   select net.http_get(
-    url := (select valor from segredos where chave = 'url_producao') || '/api/cron/expediente',
+    url := (select valor from interno.segredos where chave = 'url_producao') || '/api/cron/expediente',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (select valor from segredos where chave = 'cron_secret')
+      'Bearer ' || (select valor from interno.segredos where chave = 'cron_secret')
     ),
     timeout_milliseconds := 55000
   );
@@ -63,10 +67,10 @@ select cron.schedule(
   '30 21 * * *',
   $job$
   select net.http_get(
-    url := (select valor from segredos where chave = 'url_producao') || '/api/cron/resumo',
+    url := (select valor from interno.segredos where chave = 'url_producao') || '/api/cron/resumo',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (select valor from segredos where chave = 'cron_secret')
+      'Bearer ' || (select valor from interno.segredos where chave = 'cron_secret')
     ),
     timeout_milliseconds := 55000
   );
