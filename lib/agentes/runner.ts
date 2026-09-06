@@ -299,7 +299,21 @@ function janela(
   // corte cair no meio desse par, a API recusa a conversa inteira.
   while (recentes.length && recentes[0].role === "tool") recentes = recentes.slice(1);
 
-  return [...inicio, ...resumo, ...recentes];
+  // Só o resultado de ferramenta mais recente vai inteiro; os anteriores viram
+  // um resumo curto.
+  //
+  // Sem isto, dois arquivos lidos em sequência somam mais de 4 mil tokens e a
+  // requisição estoura o teto por minuto do provedor antes mesmo do primeiro
+  // passo — foi o que prendeu o Dev por quatro ticks seguidos. O conteúdo que
+  // ele precisa é o do arquivo que acabou de abrir; o anterior já foi usado.
+  const ultimoTool = recentes.map((m) => m.role).lastIndexOf("tool");
+  const enxutas = recentes.map((m, i) =>
+    m.role === "tool" && i !== ultimoTool && m.content.length > 400
+      ? { ...m, content: `${m.content.slice(0, 400)}\n[…resultado anterior, encurtado]` }
+      : m,
+  );
+
+  return [...inicio, ...resumo, ...enxutas];
 }
 
 function repetiuDemais(assinaturas: string[]): boolean {
