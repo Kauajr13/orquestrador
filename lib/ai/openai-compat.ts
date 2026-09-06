@@ -36,6 +36,23 @@ type RespostaBruta = {
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 };
 
+/**
+ * Tira do nome da ferramenta o lixo que alguns modelos deixam escapar.
+ *
+ * O gpt-oss organiza o próprio raciocínio em canais e às vezes vaza o marcador
+ * no meio da chamada — vimos `ler_arquivo<|channel|>commentary` chegar assim.
+ * O nome não bate com ferramenta nenhuma, o provedor recusa a requisição
+ * inteira, e o agente perde o passo por um detalhe de formatação do modelo.
+ *
+ * Cortar no primeiro caractere que não pertence a um nome resolve, e não corre
+ * risco de casar com ferramenta errada: nomes válidos aqui são todos
+ * minúsculas com sublinhado.
+ */
+function limparNome(nome: string): string {
+  const casou = nome.match(/^[a-zA-Z0-9_-]+/);
+  return casou ? casou[0] : nome;
+}
+
 export class ProvedorCompat implements Provedor {
   readonly nome: string;
   readonly modelo: string;
@@ -109,7 +126,10 @@ export class ProvedorCompat implements Provedor {
     const escolha = dados.choices?.[0];
     if (!escolha) throw new AIErro(`${this.nome}: resposta sem choices`, 502, this.nome);
 
-    const chamadas = escolha.message?.tool_calls ?? [];
+    const chamadas = (escolha.message?.tool_calls ?? []).map((c) => ({
+      ...c,
+      function: { ...c.function, name: limparNome(c.function.name) },
+    }));
     const conteudo = escolha.message?.content ?? null;
 
     // Um turno sem texto e sem ferramenta é resposta vazia — não dá pra seguir.
