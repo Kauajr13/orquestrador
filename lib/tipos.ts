@@ -69,6 +69,8 @@ export type Execucao = {
   agente_id: string;
   tarefa_id: string | null;
   conversa: Mensagem[];
+  /** O que este agente já leu nesta tarefa. Sobrevive entre ticks. */
+  fontes: { url: string; texto: string }[];
   encerrada: boolean;
   modelo: string | null;
   tokens_entrada: number;
