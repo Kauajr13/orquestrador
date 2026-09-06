@@ -127,6 +127,44 @@ export async function abrirPR(
   return { numero: pr.number, url: pr.html_url };
 }
 
+/**
+ * Lê um arquivo do repositório.
+ *
+ * Isto faltava, e a falta era grave: `abrir_pr` exige o conteúdo completo de
+ * cada arquivo, mas o Dev não tinha como ver o que já estava lá. Ou seja, para
+ * mudar uma linha do painel ele teria que reescrever a página inteira de
+ * memória — na prática, apagando o que existe. O CI barraria o estrago, mas ele
+ * nunca conseguiria terminar uma tarefa.
+ */
+export async function lerArquivo(caminho: string): Promise<string> {
+  const base = await ramoPadrao();
+  const dados = await chamar<{ content?: string; encoding?: string; type?: string }>(
+    `/repos/${repo()}/contents/${encodeURI(caminho)}?ref=${base}`,
+  );
+
+  if (dados.type !== "file" || !dados.content) {
+    throw new Error(`${caminho} não é um arquivo`);
+  }
+
+  return Buffer.from(dados.content, (dados.encoding as BufferEncoding) ?? "base64").toString(
+    "utf8",
+  );
+}
+
+/** O que existe numa pasta, para o agente se orientar antes de pedir arquivo. */
+export async function listarPasta(
+  caminho: string,
+): Promise<Array<{ nome: string; tipo: string; tamanho: number }>> {
+  const base = await ramoPadrao();
+  const dados = await chamar<Array<{ name: string; type: string; size: number }>>(
+    `/repos/${repo()}/contents/${encodeURI(caminho)}?ref=${base}`,
+  );
+
+  if (!Array.isArray(dados)) throw new Error(`${caminho} não é uma pasta`);
+
+  return dados.map((i) => ({ nome: i.name, tipo: i.type, tamanho: i.size ?? 0 }));
+}
+
 export async function verPR(numero: number) {
   return chamar<{
     number: number;

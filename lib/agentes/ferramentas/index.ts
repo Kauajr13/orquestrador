@@ -3,6 +3,7 @@ import { abrirPR } from "./codigo";
 import { pedirProvidencia } from "./humano";
 import { contratarAgente, criarTarefa, promoverAgente } from "./organizacao";
 import { escreverDiario, publicarPagina, registrarMeta } from "./publicacao";
+import { lerArquivoDoRepo, listarPastaDoRepo } from "./repositorio";
 import { carregarSkill } from "./skills";
 import type { Ferramenta } from "./tipos";
 import { buscarWeb, lerPagina } from "./web";
@@ -28,6 +29,8 @@ export const CATALOGO: Ferramenta[] = [
   escreverDiario,
   registrarMeta,
   abrirPR,
+  lerArquivoDoRepo,
+  listarPastaDoRepo,
   pedirProvidencia,
 ];
 
