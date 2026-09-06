@@ -15,6 +15,20 @@ export class AIErro extends Error {
   get valeRepetir(): boolean {
     return this.status === 429 || this.status >= 500;
   }
+
+  /**
+   * O modelo pediu uma ferramenta que não foi declarada na requisição.
+   *
+   * Acontece quando o prompt de um agente cita uma ferramenta que o catálogo
+   * ainda não tem — foi o que ocorreu ao atualizar o prompt no banco antes de o
+   * código chegar em produção. O provedor rejeita a requisição INTEIRA com 400,
+   * então sem tratamento a tentativa toda se perde por um engano recuperável.
+   */
+  get ferramentaInexistente(): string | null {
+    if (this.status !== 400) return null;
+    const casou = this.message.match(/call tool '([^']+)' which was not in request\.tools/);
+    return casou ? casou[1] : null;
+  }
 }
 
 /** Descrição de ferramenta no formato que a API de chat espera. */

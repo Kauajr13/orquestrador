@@ -90,6 +90,29 @@ export async function executarPasso(
       // agente nem motivo para contar tentativa: guardamos o que já foi
       // raciocinado e o próximo tick continua, quinze minutos depois, com a
       // cota recuperada. É para isto que a execução é retomável.
+      // O modelo pediu ferramenta que não existe no kit dele. O provedor
+      // recusa a requisição inteira, então sem isto a tentativa se perde por um
+      // engano que o próprio agente consegue corrigir se souber. Contamos como
+      // passo para não virar laço, e devolvemos a lista do que ele tem.
+      const inexistente = e instanceof AIErro ? e.ferramentaInexistente : null;
+      if (inexistente) {
+        passos += 1;
+        mensagens.push({
+          role: "user",
+          content: `A ferramenta "${inexistente}" não existe no seu kit. As suas são: ${
+            disponiveis.map((f) => f.nome).join(", ") || "nenhuma"
+          }. Siga com uma delas, ou abra uma tarefa pedindo acesso se precisar mesmo daquela.`,
+        });
+        await ctx.registrar("warn", `tentei usar ${inexistente}, que não tenho`);
+        await salvar(supabase, execucao.id, mensagens, {
+          tokensEntrada,
+          tokensSaida,
+          custo,
+          encerrada: false,
+        });
+        continue;
+      }
+
       if (e instanceof AIErro && (e.status === 429 || e.status === 503)) {
         await salvar(supabase, execucao.id, mensagens, {
           tokensEntrada,
