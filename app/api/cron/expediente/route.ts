@@ -151,11 +151,48 @@ async function tentarRevisar(
   }
 }
 
-async function tentarTrabalhar(
+/**
+ * Ordena o time por quem está parado há mais tempo.
+ *
+ * Sem isto o primeiro da lista monopoliza a empresa: o tick percorre os agentes
+ * em ordem e para no primeiro que pega tarefa, e o Gestor — criado primeiro e
+ * dono da fila inteira — nunca deixava sobrar um tick para o Dev. Ele podia
+ * delegar à vontade que o trabalho delegado não sairia do lugar.
+ *
+ * Quem trabalhou mais recentemente vai para o fim. Quem nunca trabalhou vem
+ * primeiro, o que também faz um recém-contratado começar rápido em vez de
+ * esperar a vez atrás de quem já está ocupado.
+ */
+export async function porOciosidade(
   supabase: ReturnType<typeof supabaseAdmin>,
   time: Agente[],
+): Promise<Agente[]> {
+  const { data } = await supabase
+    .from("execucoes")
+    .select("agente_id, criado_em")
+    .order("criado_em", { ascending: false })
+    .limit(200);
+
+  const ultimaVez = new Map<string, string>();
+  for (const e of data ?? []) {
+    const id = e.agente_id as string;
+    if (!ultimaVez.has(id)) ultimaVez.set(id, e.criado_em as string);
+  }
+
+  return [...time].sort((a, b) => {
+    const va = ultimaVez.get(a.id) ?? "";
+    const vb = ultimaVez.get(b.id) ?? "";
+    return va.localeCompare(vb);
+  });
+}
+
+async function tentarTrabalhar(
+  supabase: ReturnType<typeof supabaseAdmin>,
+  timeBruto: Agente[],
   tetoPassos: number,
 ): Promise<Record<string, unknown> | null> {
+  const time = await porOciosidade(supabase, timeBruto);
+
   for (const agente of time) {
     const tarefa = await pegarProximaTarefa(supabase, agente);
     if (!tarefa) continue;
