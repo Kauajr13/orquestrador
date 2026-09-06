@@ -45,7 +45,10 @@ export async function executarPasso(
     supabase,
     agente,
     tarefa,
-    fontesLidas: [],
+    // Carrega o que já foi lido em ticks anteriores. Sem isto o agente perde a
+    // pesquisa a cada invocação, refaz o mesmo trabalho e nunca consegue
+    // anotar nada — a regra 11 recusaria por "fonte não lida".
+    fontesLidas: [...(execucao.fontes ?? [])],
     skillsCarregadas: new Set<string>(),
     registrar: (nivel, mensagem) =>
       registrarLog(supabase, {
@@ -69,6 +72,7 @@ export async function executarPasso(
         tokensSaida,
         custo,
         encerrada: true,
+        fontes: ctx.fontesLidas,
       });
       return {
         fim: "erro",
@@ -79,7 +83,7 @@ export async function executarPasso(
 
     let resposta;
     try {
-      resposta = await conversar(janela(mensagens), {
+      resposta = await conversar(janela(mensagens, ctx.fontesLidas), {
         ferramentas: declaradas.length ? declaradas : undefined,
         tipo: tipoDeTrabalho(agente),
         modelo: agente.modelo,
@@ -149,6 +153,7 @@ export async function executarPasso(
         tokensSaida,
         custo,
         encerrada: true,
+        fontes: ctx.fontesLidas,
       });
       return { fim: "concluido", resposta: resposta.conteudo ?? "", passos };
     }
@@ -191,6 +196,7 @@ export async function executarPasso(
       tokensSaida,
       custo,
       encerrada: false,
+      fontes: ctx.fontesLidas,
     });
   }
 
@@ -236,8 +242,11 @@ const JANELA = 6;
  * O histórico completo continua salvo em `execucoes.conversa`: o que se encurta
  * é o que se manda, não o que se guarda.
  */
-function janela(mensagens: Mensagem[]): Mensagem[] {
-  if (mensagens.length <= JANELA + 2) return mensagens;
+function janela(
+  mensagens: Mensagem[],
+  fontes: { url: string; texto: string }[] = [],
+): Mensagem[] {
+  if (mensagens.length <= JANELA + 2 && !fontes.length) return mensagens;
 
   // O que saiu da janela vira uma linha de resumo. Sem isso o agente repete
   // trabalho que já fez — foi visto carregando a mesma skill duas vezes e
@@ -252,15 +261,31 @@ function janela(mensagens: Mensagem[]): Mensagem[] {
     }
   }
 
-  const resumo: Mensagem[] = usadas.size
+  const partes: string[] = [];
+
+  if (usadas.size) {
+    partes.push(
+      `Você já usou: ${[...usadas]
+        .map(([nome, n]) => (n > 1 ? `${nome} ${n}x` : nome))
+        .join(", ")}.`,
+    );
+  }
+
+  // Listar o que já foi lido é o que impede o agente de gastar busca atrás de
+  // página que ele mesmo já abriu — e é o que permite citá-las ao anotar, já
+  // que a regra 11 só aceita fonte efetivamente lida.
+  if (fontes.length) {
+    partes.push(
+      `Fontes que você já leu nesta tarefa (pode citá-las ao anotar, sem buscar de novo):`,
+      ...fontes.slice(-12).map((f) => `- ${f.url}`),
+    );
+  }
+
+  const resumo: Mensagem[] = partes.length
     ? [
         {
           role: "user",
-          content: `[resumo do que você já fez nesta tarefa, antes do trecho abaixo: ${[
-            ...usadas,
-          ]
-            .map(([nome, n]) => (n > 1 ? `${nome} ${n}x` : nome))
-            .join(", ")}. Não repita o que já está feito; siga de onde parou.]`,
+          content: `[memória de trabalho desta tarefa, do que ficou fora do trecho abaixo]\n${partes.join("\n")}\nNão repita o que já está feito; siga de onde parou.`,
         },
       ]
     : [];
@@ -369,12 +394,19 @@ async function salvar(
   supabase: SupabaseClient,
   execucaoId: string,
   conversa: Mensagem[],
-  n: { tokensEntrada: number; tokensSaida: number; custo: number; encerrada: boolean },
+  n: {
+    tokensEntrada: number;
+    tokensSaida: number;
+    custo: number;
+    encerrada: boolean;
+    fontes?: { url: string; texto: string }[];
+  },
 ): Promise<void> {
   const { error } = await supabase
     .from("execucoes")
     .update({
       conversa,
+      ...(n.fontes ? { fontes: n.fontes } : {}),
       tokens_entrada: n.tokensEntrada,
       tokens_saida: n.tokensSaida,
       custo_estimado: n.custo,
