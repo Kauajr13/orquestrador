@@ -272,8 +272,8 @@ create table if not exists config (
 
 insert into config (chave, valor) values
   ('pausado',            'false'),
-  ('expediente_inicio',  '8'),
-  ('expediente_fim',     '18'),
+  ('expediente_inicio',  '0'),
+  ('expediente_fim',     '24'),
   ('teto_tarefas_dia',   '20'),
   ('teto_tokens_dia',    '5000000'),
   ('teto_passos_tarefa', '25'),
