@@ -28,6 +28,11 @@ export const lerArquivoDoRepo: Ferramenta = {
     required: ["caminho"],
   },
 
+  // Arquivo pela metade é pior que arquivo nenhum: o agente lê, não acha o que
+  // procura, e lê de novo. Aqui o teto acompanha o tamanho real dos arquivos
+  // do projeto.
+  tetoResposta: 9_000,
+
   async executar(args, ctx) {
     const caminho = String(args.caminho ?? "").trim().replace(/^\/+/, "");
     if (!caminho) throw new Error("caminho vazio");

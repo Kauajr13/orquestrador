@@ -229,7 +229,7 @@ function declarar(f: Ferramenta): FerramentaDeclarada {
  * requisição passava dos 8 mil tokens por minuto que o provedor gratuito
  * concede, e o agente parava de avançar.
  */
-const JANELA = 6;
+const JANELA = 4;
 
 /**
  * O que vai para o modelo: o começo da conversa mais as mensagens recentes.
@@ -347,7 +347,8 @@ async function executarFerramenta(
     // inteira a cada turno, então um resultado grande não pesa uma vez — pesa
     // em todos os turnos seguintes. Um único retorno de 12 mil caracteres foi
     // suficiente para travar o agente contra o limite de tokens por minuto.
-    return saida.length > 2_500 ? `${saida.slice(0, 2_500)}\n[…truncado]` : saida;
+    const teto = ferramenta.tetoResposta ?? 2_500;
+    return saida.length > teto ? `${saida.slice(0, teto)}\n[…truncado]` : saida;
   } catch (e) {
     const motivo = (e as Error).message;
     await ctx.registrar("erro", `${ferramenta.nome} falhou: ${motivo}`);
