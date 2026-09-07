@@ -277,6 +277,8 @@ insert into config (chave, valor) values
   ('teto_tarefas_dia',   '20'),
   ('teto_tokens_dia',    '5000000'),
   ('teto_passos_tarefa', '25'),
+  -- Freio de dinheiro de verdade. Zero desliga o freio.
+  ('teto_gasto_mes_usd',  '5'),
   ('fuso',               'America/Sao_Paulo')
 on conflict (chave) do nothing;
 

@@ -12,6 +12,7 @@ import {
   estaPausado,
   lerConfig,
   numero,
+  tetoDeGastoAtingido,
   tetoDiarioAtingido,
 } from "@/lib/agentes/jornada";
 import { montarPromptDoAgente } from "@/lib/agentes/preparar";
@@ -79,6 +80,32 @@ export async function GET(req: Request) {
   if (teto.atingido) {
     await supabase.from("agentes").update({ status: "descansando" }).eq("ativo", true);
     return NextResponse.json({ ok: true, feito: "nada", motivo: teto.motivo, enviadas });
+  }
+
+  // Dinheiro de verdade tem freio próprio: um agente em laço queima o mês numa
+  // madrugada, e o teto diário de tokens não pega isso porque é por dia.
+  const gasto = await tetoDeGastoAtingido(supabase, cfg);
+  if (gasto.atingido) {
+    await supabase.from("agentes").update({ status: "descansando" }).eq("ativo", true);
+    await supabase.from("notificacoes").insert({
+      texto: `Expediente parado: ${gasto.motivo}. Para liberar, aumente teto_gasto_mes_usd na tabela config.`,
+      urgencia: "critica",
+    });
+    return NextResponse.json({ ok: true, feito: "nada", motivo: gasto.motivo, enviadas });
+  }
+  if (gasto.alerta) {
+    // Um aviso por dia basta. Sem esta checagem o alerta iria a cada tick, o
+    // que treina o Kauã a ignorar a notificação justamente quando ela importa.
+    const hoje = new Date().toISOString().slice(0, 10);
+    const { data: jaAvisou } = await supabase
+      .from("notificacoes")
+      .select("id")
+      .gte("criado_em", `${hoje}T00:00:00Z`)
+      .ilike("texto", "Gasto do mês%")
+      .limit(1);
+    if (!jaAvisou?.length) {
+      await supabase.from("notificacoes").insert({ texto: gasto.alerta, urgencia: "normal" });
+    }
   }
 
   const { data: agentes } = await supabase

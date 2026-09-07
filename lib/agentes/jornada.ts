@@ -88,3 +88,48 @@ export async function tetoDiarioAtingido(
 
   return { atingido: false };
 }
+
+/**
+ * Freio de gasto do mês.
+ *
+ * Enquanto o provedor era gratuito, o custo era só um número na tela. Com
+ * provedor pago vira dinheiro do Kauã, e um agente em laço consegue queimar um
+ * mês inteiro de orçamento numa madrugada sem ninguém ver.
+ *
+ * Para o expediente ao chegar no teto, e avisa uma vez ao passar de 80% — o
+ * aviso importa mais que o corte, porque dá tempo de decidir antes de parar.
+ */
+export async function tetoDeGastoAtingido(
+  supabase: SupabaseClient,
+  cfg: Config,
+): Promise<{ atingido: boolean; motivo?: string; alerta?: string }> {
+  const teto = numero(cfg, "teto_gasto_mes_usd", 5);
+  if (teto <= 0) return { atingido: false };
+
+  const inicioDoMes = new Date();
+  inicioDoMes.setUTCDate(1);
+  inicioDoMes.setUTCHours(0, 0, 0, 0);
+
+  const { data } = await supabase
+    .from("execucoes")
+    .select("custo_estimado")
+    .gte("criado_em", inicioDoMes.toISOString());
+
+  const gasto = (data ?? []).reduce((s, e) => s + Number(e.custo_estimado ?? 0), 0);
+
+  if (gasto >= teto) {
+    return {
+      atingido: true,
+      motivo: `teto de gasto do mês atingido: US$ ${gasto.toFixed(2)} de US$ ${teto.toFixed(2)}`,
+    };
+  }
+
+  if (gasto >= teto * 0.8) {
+    return {
+      atingido: false,
+      alerta: `Gasto do mês em US$ ${gasto.toFixed(2)}, de um teto de US$ ${teto.toFixed(2)}. No ritmo atual o expediente para antes do fim do mês.`,
+    };
+  }
+
+  return { atingido: false };
+}
