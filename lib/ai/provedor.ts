@@ -2,34 +2,42 @@ import { ProvedorCompat } from "./openai-compat";
 import { AIErro } from "./tipos";
 
 /**
- * Qual LLM a empresa usa hoje.
+ * Quais LLMs a empresa usa, e em que ordem.
  *
- * Nada aqui é fixo de propósito: o provedor é escolhido por variável de
- * ambiente. Isso já provou o valor — o projeto nasceu apontando para o b.ai,
- * que encerrou a promoção de tokens gratuitos poucos dias depois, e trocar foi
- * mexer em três linhas do `.env` em vez de refazer a camada.
+ * A empresa fala com vários provedores, e a ordem importa: o primeiro da fila é
+ * o mais barato, e os seguintes só entram quando o anterior recusa por cota.
+ * Na prática isso significa trabalhar de graça enquanto der e pagar só o
+ * excedente — o provedor gratuito cobre o dia normal, e o pago existe para a
+ * empresa não parar quando ele esgota.
  *
- * Só há dois requisitos para o provedor entrar aqui:
+ * Nada aqui é fixo de propósito, e isso já se pagou duas vezes: o projeto
+ * nasceu no b.ai, que encerrou a promoção em dias, e depois no Groq, cujo plano
+ * pago fechou por demanda. Trocar de provedor é mexer no `.env`.
+ *
+ * Dois requisitos para entrar na fila:
  *   1. falar `/chat/completions` no formato da OpenAI
- *   2. suportar tool calling — sem isso o runner não existe, porque o agente
- *      não teria como pedir para usar uma ferramenta
+ *   2. suportar tool calling — sem isso o runner não existe
  *
- * Atendem hoje: Mistral, Gemini (endpoint compatível), Groq, DeepSeek,
- * OpenRouter, Together, e a própria OpenAI.
+ * Configuração, numerada a partir de 1 e lida até faltar uma:
+ *
+ *   LLM_1_URL=https://api.groq.com/openai/v1
+ *   LLM_1_KEY=gsk_...
+ *   LLM_1_MODELOS_CARO=openai/gpt-oss-120b,qwen/qwen3.8-27b
+ *   LLM_1_MODELOS_BARATO=openai/gpt-oss-20b
+ *   LLM_2_URL=https://api.deepseek.com/v1
+ *   LLM_2_KEY=sk-...
+ *   LLM_2_MODELOS_CARO=deepseek-chat
+ *
+ * O formato antigo de um provedor só (LLM_BASE_URL / LLM_API_KEY /
+ * LLM_MODELO_CARO / LLM_MODELO_BARATO) continua funcionando como provedor 1.
  */
 
-/**
- * Trabalho barato (classificar, resumir, escrever texto) vai no modelo pequeno;
- * código e decisão estratégica vão no grande. O hábito precisa existir desde o
- * começo: quando o volume crescer, mudar o roteamento é trocar uma env var em
- * vez de refazer a arquitetura.
- */
 export type TipoDeTrabalho = "barato" | "caro";
 
 /**
  * Preço de mercado por 1 milhão de tokens, em USD, por prefixo de modelo.
- * Serve para estimar ordem de grandeza, não para faturar: o objetivo é o Kauã
- * ver a projeção mensal antes de a conta existir de verdade.
+ * Serve para estimar ordem de grandeza e alimentar o freio de gasto, não para
+ * faturar.
  */
 const PRECOS: Array<{ prefixo: string; entrada: number; saida: number }> = [
   { prefixo: "claude-opus", entrada: 15, saida: 75 },
@@ -39,18 +47,17 @@ const PRECOS: Array<{ prefixo: string; entrada: number; saida: number }> = [
   { prefixo: "gpt-4", entrada: 2.5, saida: 10 },
   { prefixo: "gemini", entrada: 1.25, saida: 5 },
   { prefixo: "mistral-large", entrada: 2, saida: 6 },
-  { prefixo: "mistral-medium", entrada: 0.4, saida: 2 },
   { prefixo: "mistral-small", entrada: 0.2, saida: 0.6 },
   { prefixo: "codestral", entrada: 0.3, saida: 0.9 },
-  { prefixo: "deepseek", entrada: 0.28, saida: 0.42 },
-  { prefixo: "llama", entrada: 0.6, saida: 0.8 },
+  // DeepSeek V4-Flash. O cache derruba a entrada para US$ 0,007, mas aqui fica
+  // o preço cheio: superestimar faz o freio de gasto proteger mais, não menos.
+  { prefixo: "deepseek", entrada: 0.22, saida: 0.66 },
   { prefixo: "gpt-oss-120b", entrada: 0.15, saida: 0.6 },
   { prefixo: "gpt-oss-20b", entrada: 0.075, saida: 0.3 },
+  { prefixo: "llama", entrada: 0.6, saida: 0.8 },
   { prefixo: "qwen", entrada: 0.4, saida: 1.2 },
 ];
 
-// Modelo desconhecido cai aqui. Preferimos superestimar: uma projeção alta
-// demais faz o Kauã olhar; uma baixa demais faz ele não olhar.
 const PRECO_PADRAO = { entrada: 3, saida: 15 };
 
 function precoDe(modelo: string) {
@@ -58,71 +65,113 @@ function precoDe(modelo: string) {
   return PRECOS.find((p) => m.includes(p.prefixo)) ?? PRECO_PADRAO;
 }
 
-/** Nome amigável do provedor, tirado da URL — só para log e mensagem de erro. */
+/** Nome curto do provedor, tirado da URL — para log e mensagem de erro. */
 function nomeDoProvedor(baseUrl: string): string {
   try {
-    return new URL(baseUrl).hostname.replace(/^api\./, "").replace(/\.com$|\.ai$/, "");
+    return new URL(baseUrl).hostname.replace(/^api\./, "").replace(/\.(com|ai|net)$/, "");
   } catch {
     return "llm";
   }
 }
 
+type Config = { url: string; chave: string; modelos: string[] };
+
+function lista(valor: string | undefined): string[] {
+  return (valor ?? "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+}
+
 /**
- * A fila de modelos para um tipo de trabalho.
+ * Lê os provedores do ambiente, na ordem em que devem ser tentados.
+ * Para no primeiro número que não tiver URL — a fila é contígua.
+ */
+function configurados(tipo: TipoDeTrabalho): Config[] {
+  const fila: Config[] = [];
+
+  for (let i = 1; i <= 5; i++) {
+    const url = process.env[`LLM_${i}_URL`];
+    if (!url) break;
+
+    const modelos =
+      tipo === "caro"
+        ? lista(process.env[`LLM_${i}_MODELOS_CARO`])
+        : lista(process.env[`LLM_${i}_MODELOS_BARATO`]).length
+          ? lista(process.env[`LLM_${i}_MODELOS_BARATO`])
+          : lista(process.env[`LLM_${i}_MODELOS_CARO`]);
+
+    fila.push({ url, chave: process.env[`LLM_${i}_KEY`] ?? "", modelos });
+  }
+
+  // Compatibilidade com a configuração de provedor único.
+  if (!fila.length && process.env.LLM_BASE_URL) {
+    const modelos =
+      tipo === "caro"
+        ? lista(process.env.LLM_MODELO_CARO)
+        : lista(process.env.LLM_MODELO_BARATO).length
+          ? lista(process.env.LLM_MODELO_BARATO)
+          : lista(process.env.LLM_MODELO_CARO);
+
+    fila.push({
+      url: process.env.LLM_BASE_URL,
+      chave: process.env.LLM_API_KEY ?? "",
+      modelos,
+    });
+  }
+
+  return fila;
+}
+
+/**
+ * A fila inteira, achatada: cada provedor com cada um dos seus modelos.
  *
- * As variáveis aceitam uma lista separada por vírgula, e não um modelo só,
- * porque free tier costuma limitar por modelo e por dia — no Gemini são cerca
- * de 20 requisições diárias para cada um. Um modelo sozinho não sustenta nem
- * uma tarefa; quatro deles somados sustentam o dia de trabalho de uma empresa
- * pequena. Quando um esgota, o `conversar()` passa para o próximo da fila.
- *
- * Com provedor pago isso não atrapalha: basta listar um modelo só.
+ * Free tier costuma limitar por modelo, então listar vários do mesmo provedor
+ * soma cota. E listar vários provedores soma de novo — quando o gratuito acaba,
+ * o próximo assume sem ninguém precisar acordar.
  */
 export function provedoresPara(tipo: TipoDeTrabalho, modeloForcado?: string | null) {
-  const baseUrl = process.env.LLM_BASE_URL;
-  const apiKey = process.env.LLM_API_KEY ?? "";
+  const fila = configurados(tipo);
 
-  if (!baseUrl) {
+  if (!fila.length) {
     throw new AIErro(
-      "Defina LLM_BASE_URL (ex.: https://generativelanguage.googleapis.com/v1beta/openai)",
+      "Nenhum provedor configurado. Defina LLM_1_URL, LLM_1_KEY e LLM_1_MODELOS_CARO.",
       400,
       "llm",
     );
   }
 
-  const nome = nomeDoProvedor(baseUrl);
-  if (!apiKey) throw new AIErro("LLM_API_KEY ausente no ambiente", 401, nome);
+  const provedores = [];
 
-  const bruto =
-    modeloForcado ||
-    (tipo === "caro"
-      ? process.env.LLM_MODELO_CARO
-      : process.env.LLM_MODELO_BARATO ?? process.env.LLM_MODELO_CARO);
+  for (const cfg of fila) {
+    const nome = nomeDoProvedor(cfg.url);
+    if (!cfg.chave) continue;
 
-  if (!bruto) {
+    const modelos = modeloForcado ? [modeloForcado] : cfg.modelos;
+    for (const modelo of modelos) {
+      const preco = precoDe(modelo);
+      provedores.push(
+        new ProvedorCompat({
+          nome,
+          baseUrl: cfg.url,
+          apiKey: cfg.chave,
+          modelo,
+          precoEntrada: preco.entrada,
+          precoSaida: preco.saida,
+        }),
+      );
+    }
+  }
+
+  if (!provedores.length) {
     throw new AIErro(
-      "Defina LLM_MODELO_CARO (e de preferência LLM_MODELO_BARATO) no ambiente",
-      400,
-      nome,
+      "Provedores configurados, mas sem chave ou sem modelo. Confira LLM_*_KEY e LLM_*_MODELOS_CARO.",
+      401,
+      "llm",
     );
   }
 
-  const modelos = bruto
-    .split(",")
-    .map((m) => m.trim())
-    .filter(Boolean);
-
-  return modelos.map((modelo) => {
-    const preco = precoDe(modelo);
-    return new ProvedorCompat({
-      nome,
-      baseUrl,
-      apiKey,
-      modelo,
-      precoEntrada: preco.entrada,
-      precoSaida: preco.saida,
-    });
-  });
+  return provedores;
 }
 
 /** Compatibilidade: o primeiro da fila. */
