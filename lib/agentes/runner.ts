@@ -122,7 +122,12 @@ export async function executarPasso(
         continue;
       }
 
-      if (e instanceof AIErro && (e.status === 429 || e.status === 503)) {
+      // 402 chega aqui quando a fila INTEIRA ficou sem cota — inclusive um
+      // provedor cuja conta não está liberada. Encerrar o tick guardando o
+      // estado é o mesmo remédio do 429: nada se perde, e o próximo tick tenta
+      // de novo. Deixar subir como erro perderia o passo por uma condição que
+      // não é defeito nosso.
+      if (e instanceof AIErro && (e.status === 429 || e.status === 503 || e.status === 402)) {
         await salvar(supabase, execucao.id, mensagens, {
           tokensEntrada,
           tokensSaida,
@@ -133,7 +138,9 @@ export async function executarPasso(
           "warn",
           e.status === 429
             ? "bati no limite de requisições do provedor; continuo no próximo tick"
-            : "provedor sobrecarregado; continuo no próximo tick",
+            : e.status === 402
+              ? "nenhum provedor da fila tem cota liberada; continuo no próximo tick"
+              : "provedor sobrecarregado; continuo no próximo tick",
         );
         return { fim: "continua", passos };
       }
