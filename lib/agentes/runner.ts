@@ -159,6 +159,7 @@ export async function executarPasso(
         custo,
         encerrada: true,
         fontes: ctx.fontesLidas,
+        modelo: resposta.modelo,
       });
       return { fim: "concluido", resposta: resposta.conteudo ?? "", passos };
     }
@@ -202,6 +203,7 @@ export async function executarPasso(
       custo,
       encerrada: false,
       fontes: ctx.fontesLidas,
+      modelo: resposta.modelo,
     });
   }
 
@@ -430,6 +432,7 @@ async function salvar(
     custo: number;
     encerrada: boolean;
     fontes?: { url: string; texto: string }[];
+    modelo?: string;
   },
 ): Promise<void> {
   const { error } = await supabase
@@ -437,6 +440,9 @@ async function salvar(
     .update({
       conversa,
       ...(n.fontes ? { fontes: n.fontes } : {}),
+      // Qual modelo atendeu. É o que diz, olhando o banco depois, se a empresa
+      // trabalhou de graça ou caiu para o provedor pago.
+      ...(n.modelo ? { modelo: n.modelo } : {}),
       tokens_entrada: n.tokensEntrada,
       tokens_saida: n.tokensSaida,
       custo_estimado: n.custo,
