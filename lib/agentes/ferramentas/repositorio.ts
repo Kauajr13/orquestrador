@@ -28,10 +28,11 @@ export const lerArquivoDoRepo: Ferramenta = {
     required: ["caminho"],
   },
 
-  // Arquivo pela metade é pior que arquivo nenhum: o agente lê, não acha o que
-  // procura, e lê de novo. Aqui o teto acompanha o tamanho real dos arquivos
-  // do projeto.
-  tetoResposta: 9_000,
+  // Equilíbrio medido, não chutado: arquivo pela metade faz o agente reler, mas
+  // 9 mil caracteres (2250 tokens) consumiam 28% da cota do minuto sozinhos.
+  // 4500 cobre a maior parte dos arquivos do projeto e deixa espaço para ele
+  // pensar depois de ler.
+  tetoResposta: 4_500,
 
   async executar(args, ctx) {
     const caminho = String(args.caminho ?? "").trim().replace(/^\/+/, "");

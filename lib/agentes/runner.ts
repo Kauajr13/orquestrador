@@ -4,6 +4,7 @@ import { podeGastar } from "@/lib/caixa";
 import { registrarLog } from "@/lib/log";
 import type { Agente, Execucao, Mensagem, Tarefa } from "@/lib/tipos";
 import type { Contexto, Ferramenta } from "./ferramentas/tipos";
+import { ferramentasRelevantes } from "./relevancia";
 
 /**
  * O runner é onde um agente efetivamente trabalha: recebe uma tarefa, conversa
@@ -35,7 +36,11 @@ export async function executarPasso(
   tetoPassos: number,
 ): Promise<ResultadoDoPasso> {
   const inicio = Date.now();
-  const disponiveis = catalogo.filter((f) => agente.ferramentas.includes(f.nome));
+  // O agente continua *tendo* todas as do kit — a regra 2 depende disso. O que
+  // muda é quantas viajam na requisição: mandar as quinze do Gestor custa ~2000
+  // tokens em cada turno, e é o que estoura o teto antes de ele pensar.
+  const doKit = catalogo.filter((f) => agente.ferramentas.includes(f.nome));
+  const disponiveis = ferramentasRelevantes(doKit, tarefa);
   const declaradas = disponiveis.map(declarar);
 
   const execucao = await carregarOuCriarExecucao(supabase, agente, tarefa, promptBase);
@@ -83,7 +88,7 @@ export async function executarPasso(
 
     let resposta;
     try {
-      resposta = await conversar(janela(mensagens, ctx.fontesLidas), {
+      resposta = await conversar(montarJanela(mensagens, ctx.fontesLidas), {
         ferramentas: declaradas.length ? declaradas : undefined,
         tipo: tipoDeTrabalho(agente),
         modelo: agente.modelo,
@@ -242,16 +247,26 @@ const JANELA = 4;
  * O histórico completo continua salvo em `execucoes.conversa`: o que se encurta
  * é o que se manda, não o que se guarda.
  */
-function janela(
+export function montarJanela(
   mensagens: Mensagem[],
   fontes: { url: string; texto: string }[] = [],
 ): Mensagem[] {
-  if (mensagens.length <= JANELA + 2 && !fontes.length) return mensagens;
+  // Onde a parte recente começa. Nunca antes da terceira mensagem: as duas
+  // primeiras (system e tarefa) já vão em `inicio`, e deixar o corte passar por
+  // cima delas mandava o prompt de sistema DUAS vezes na mesma requisição.
+  //
+  // Era um bug caro e silencioso: acontecia sempre que havia fonte lida e a
+  // conversa ainda era curta — ou seja, no passo seguinte à primeira busca, que
+  // é o passo 2 de quase toda tarefa. Até 2600 tokens duplicados exatamente no
+  // momento em que o orçamento é mais apertado.
+  const corte = Math.max(2, mensagens.length - JANELA);
+
+  if (corte >= mensagens.length && !fontes.length) return mensagens;
 
   // O que saiu da janela vira uma linha de resumo. Sem isso o agente repete
   // trabalho que já fez — foi visto carregando a mesma skill duas vezes e
   // refazendo buscas — e cada repetição custa um passo e um pedaço da cota.
-  const cortadas = mensagens.slice(2, -JANELA);
+  const cortadas = mensagens.slice(2, corte);
   const usadas = new Map<string, number>();
   for (const m of cortadas) {
     if (m.role === "assistant" && m.tool_calls) {
@@ -293,7 +308,7 @@ function janela(
   // As duas primeiras são o system e a tarefa — sem elas o agente esquece quem
   // é e o que estava fazendo.
   const inicio = mensagens.slice(0, 2);
-  let recentes = mensagens.slice(-JANELA);
+  let recentes = mensagens.slice(corte);
 
   // Uma resposta com tool_calls precisa ser seguida dos resultados dela. Se o
   // corte cair no meio desse par, a API recusa a conversa inteira.

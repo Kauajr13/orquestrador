@@ -64,10 +64,10 @@ async function memoriaRecente(
     .from("memoria")
     .select("chave, conteudo")
     .order("atualizado_em", { ascending: false })
-    .limit(6);
+    .limit(4);
 
   return (data ?? []).map((m) => ({
     chave: m.chave as string,
-    conteudo: String(m.conteudo).slice(0, 700),
+    conteudo: String(m.conteudo).slice(0, 400),
   }));
 }

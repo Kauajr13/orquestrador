@@ -123,10 +123,24 @@ export async function revisar(
         : "existe, mas está atrás da proteção da Vercel — não deu para verificar";
   }
 
-  const diff = (await diffDoPR(tarefa.pr_numero)).slice(0, 30_000);
+  // O diff é a parte que mais pesa nesta requisição, e ela já carrega o prompt
+  // do Revisor mais a skill de revisão. Com 30 mil caracteres o total passava de
+  // 9 mil tokens e estourava o teto do provedor sozinho — o Revisor nunca
+  // conseguiria emitir parecer sobre PR nenhum. 8 mil cobrem a grande maioria
+  // dos PRs que um agente abre; o que passar disso vem truncado com aviso.
+  const diffInteiro = await diffDoPR(tarefa.pr_numero);
+  const diff =
+    diffInteiro.length > 8_000
+      ? `${diffInteiro.slice(0, 8_000)}\n\n[…diff truncado em 8 mil de ${diffInteiro.length} caracteres. Se o que você viu não basta para decidir, peça mudanças pedindo um PR menor.]`
+      : diffInteiro;
   const sensiveis = tocaEspinhaDorsal(arquivos);
 
-  const skill = await lerSkill("revisao-de-codigo").catch(() => null);
+  // Só o começo da skill: ela tem 5 mil caracteres e é reenviada em toda
+  // revisão. O essencial (o que olhar, o formato da resposta) está no topo.
+  const skillInteira = await lerSkill("revisao-de-codigo").catch(() => null);
+  const skill = skillInteira
+    ? { ...skillInteira, conteudo: skillInteira.conteudo.slice(0, 2_000) }
+    : null;
 
   const prompt = [
     revisor.prompt,
