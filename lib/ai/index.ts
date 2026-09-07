@@ -19,10 +19,10 @@ const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *
  *   - Falha passageira (503, rede caindo): o mesmo modelo tenta de novo, com
  *     espera crescente.
- *   - Cota esgotada (429): insistir não adianta, porque no free tier o limite
- *     costuma ser diário e por modelo. Aí passamos para o próximo da fila, que
- *     tem cota própria. É assim que quatro modelos de 20 chamadas por dia viram
- *     um dia de trabalho utilizável.
+ *   - Sem cota (429, 413, 402): insistir não adianta, porque no free tier o
+ *     limite costuma ser diário e por modelo. Aí passamos para o próximo da
+ *     fila, que tem cota própria. É assim que quatro modelos de 20 chamadas por
+ *     dia viram um dia de trabalho utilizável.
  *
  * Se a fila inteira esgotar, o erro sobe e o runner guarda o estado — o próximo
  * tick tenta de novo, e amanhã as cotas terão virado.
@@ -51,10 +51,19 @@ export async function conversar(
         ultimo = e;
 
         if (e instanceof AIErro) {
-          // Cota do modelo acabou (429) ou o prompt passou do teto de tokens
-          // por minuto daquele modelo (413): nos dois casos, insistir no mesmo
-          // modelo não muda nada. Próximo da fila, que tem cota e teto próprios.
-          if (e.status === 429 || e.status === 413) break;
+          // Cota do modelo acabou (429), o prompt passou do teto de tokens por
+          // minuto daquele modelo (413), ou a conta não tem cota liberada
+          // (402): nos três casos, insistir no mesmo modelo não muda nada.
+          // Próximo da fila, que tem cota e teto próprios.
+          //
+          // O 402 entrou aqui em 07/09/2026, e o modo de falha vale registrar:
+          // a chave do Cerebras autenticava e listava os modelos normalmente,
+          // mas toda inferência voltava "payment required". Como 402 é 4xx, ele
+          // caía no `throw` de baixo e derrubava o tick inteiro — um provedor
+          // sem cota na fila ficava PIOR do que não ter provedor nenhum. Quem
+          // diz "não posso atender" é quem se pula, seja por cota, teto ou
+          // cobrança.
+          if (e.status === 429 || e.status === 413 || e.status === 402) break;
           // Erro nosso (chave errada, payload inválido): trocar de modelo não
           // resolve, e insistir só queima o orçamento do tick.
           if (!e.valeRepetir) throw e;
