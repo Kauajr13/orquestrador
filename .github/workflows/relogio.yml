@@ -1,15 +1,26 @@
 # O relógio do escritório.
 #
 # O cron nativo da Vercel, no plano Hobby, não garante disparo abaixo de uma
-# vez por dia — e o expediente precisa de um tick a cada 15 minutos pra
-# avançar tarefa aos poucos (a função da Vercel morre em 60s, não dá pra
-# fazer tudo de uma vez). Por isso quem dá o tick é o GitHub Actions, que
-# tem cron de verdade.
+# vez por dia — e o expediente precisa de um tick curto pra avançar tarefa aos
+# poucos (a função da Vercel morre em 60s, não dá pra fazer tudo de uma vez).
+# Por isso quem dá o tick é o GitHub Actions, que tem cron de verdade.
+#
+# Cada tick trabalha só UM agente por vez (quem pegou a tarefa termina ou bate
+# no teto de passos, e devolve). Um tick mais frequente não faz um tick fazer
+# mais — faz a empresa girar entre os agentes mais rápido, o que importa cada
+# vez mais conforme o time cresce.
+#
+# 5 minutos é o piso técnico: o GitHub Actions não dispara abaixo disso, e um
+# `*/1` ou `*/2` simplesmente não roda. Sem custo extra — o repositório é
+# público (minutos do Actions ilimitados) e a Vercel Hobby dá 1M de invocações
+# por mês, bem acima do que 288 ticks/dia somam. Decisão de 07/09/2026, depois
+# de resolver o gargalo real (cota diária do provedor, não o intervalo do
+# tick) com a fila multi-provedor.
 name: relogio
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
