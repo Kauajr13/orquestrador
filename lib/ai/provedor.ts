@@ -18,6 +18,13 @@ import { AIErro } from "./tipos";
  *   1. falar `/chat/completions` no formato da OpenAI
  *   2. suportar tool calling — sem isso o runner não existe
  *
+ * E um critério de escolha, que custou uma pesquisa inteira para virar óbvio:
+ * o que limita esta empresa é **tokens por dia**, não por minuto. Medido em
+ * 07/09/2026, a requisição típica do Dev tem 3.649 tokens e sobra espaço nos 8
+ * mil por minuto do Groq; o 429 que travava tudo dizia, no corpo, "tokens per
+ * day (TPD): Limit 200000, Used 197139". Ao avaliar um provedor novo, olhe a
+ * cota diária ou mensal antes de olhar a de pico.
+ *
  * Configuração, numerada a partir de 1 e lida até faltar uma:
  *
  *   LLM_1_URL=https://api.groq.com/openai/v1
@@ -47,8 +54,10 @@ const PRECOS: Array<{ prefixo: string; entrada: number; saida: number }> = [
   { prefixo: "gpt-4", entrada: 2.5, saida: 10 },
   { prefixo: "gemini", entrada: 1.25, saida: 5 },
   { prefixo: "mistral-large", entrada: 2, saida: 6 },
+  { prefixo: "mistral-medium", entrada: 0.4, saida: 2 },
   { prefixo: "mistral-small", entrada: 0.2, saida: 0.6 },
   { prefixo: "codestral", entrada: 0.3, saida: 0.9 },
+  { prefixo: "devstral", entrada: 0.1, saida: 0.3 },
   // DeepSeek V4-Flash. O cache derruba a entrada para US$ 0,007, mas aqui fica
   // o preço cheio: superestimar faz o freio de gasto proteger mais, não menos.
   { prefixo: "deepseek", entrada: 0.22, saida: 0.66 },
