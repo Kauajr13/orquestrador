@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#F5F7FA" />
+  <!-- Header -->
+  <rect x="0" y="0" width="1200" height="80" fill="#2C3E50" />
+  <text x="20" y="50" font-family="Arial" font-size="28" fill="#ECF0F1">Painel de Custo Projetado</text>
+  <!-- Filter bar -->
+  <rect x="0" y="80" width="1200" height="80" fill="#FFFFFF" stroke="#DCE0E6" />
+  <text x="30" y="115" font-family="Arial" font-size="16" fill="#333333">Projeto:</text>
+  <rect x="120" y="95" width="200" height="30" fill="#ECF0F1" stroke="#BDC3C7" />
+  <text x="30" y="155" font-family="Arial" font-size="16" fill="#333333">Período:</text>
+  <rect x="120" y="135" width="200" height="30" fill="#ECF0F1" stroke="#BDC3C7" />
+  <!-- Metric cards -->
+  <g transform="translate(30,180)">
+    <rect width="260" height="120" fill="#FFFFFF" stroke="#DCE0E6" />
+    <text x="130" y="30" text-anchor="middle" font-family="Arial" font-size="14" fill="#7F8C8D">Custo Projetado</text>
+    <text x="130" y="80" text-anchor="middle" font-family="Arial" font-size="24" fill="#2C3E50">R$ 1.250.000</text>
+  </g>
+  <g transform="translate(320,180)">
+    <rect width="260" height="120" fill="#FFFFFF" stroke="#DCE0E6" />
+    <text x="130" y="30" text-anchor="middle" font-family="Arial" font-size="14" fill="#7F8C8D">Custo Real</text>
+    <text x="130" y="80" text-anchor="middle" font-family="Arial" font-size="24" fill="#2C3E50">R$ 1.300.000</text>
+  </g>
+  <g transform="translate(610,180)">
+    <rect width="260" height="120" fill="#FFFFFF" stroke="#DCE0E6" />
+    <text x="130" y="30" text-anchor="middle" font-family="Arial" font-size="14" fill="#7F8C8D">Desvio (Valor)</text>
+    <text x="130" y="80" text-anchor="middle" font-family="Arial" font-size="24" fill="#E74C3C">-R$ 50.000</text>
+  </g>
+  <g transform="translate(900,180)">\n    <rect width="260" height="120" fill="#FFFFFF" stroke="#DCE0E6" />
+    <text x="130" y="30" text-anchor="middle" font-family="Arial" font-size="14" fill="#7F8C8D">Desvio (%)</text>
+    <text x="130" y="80" text-anchor="middle" font-family="Arial" font-size="24" fill="#E74C3C">-4,0%</text>
+  </g>
+  <!-- Main chart -->
+  <rect x="30" y="320" width="1140" height="300" fill="#FFFFFF" stroke="#DCE0E6" />
+  <text x="60" y="350" font-family="Arial" font-size="16" fill="#7F8C8D">[Gráfico de linhas – Custo Projetado vs Real]</text>
+  <!-- Table -->
+  <rect x="30" y="640" width="1140" height="140" fill="#FFFFFF" stroke="#DCE0E6" />
+  <text x="60" y="670" font-family="Arial" font-size="16" fill="#7F8C8D">[Tabela detalhada de custos]</text>
+</svg>
