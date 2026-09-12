@@ -193,9 +193,12 @@ function Relogio() {
         minute: "2-digit",
       }).format(new Date());
 
-    setHora(formatar());
     const id = setInterval(() => setHora(formatar()), 15_000);
-    return () => clearInterval(id);
+    const timeoutId = setTimeout(() => setHora(formatar()), 0);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(id);
+    };
   }, []);
 
   return (

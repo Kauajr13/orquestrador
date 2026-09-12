@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "db:migrate": "node --env-file=.env.local --experimental-strip-types scripts/db-migrate.mts",
     "db:check": "node --env-file=.env.local --experimental-strip-types scripts/db-check.mts",
+    "db:destravar": "node --env-file=.env.local --experimental-strip-types scripts/destravar.mts",
     "lint:sql": "node --experimental-strip-types scripts/lint-sql.mts",
     "typegen": "next typegen"
   },
