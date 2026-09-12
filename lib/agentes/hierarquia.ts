@@ -131,9 +131,20 @@ export async function falharOuEscalar(
   const tentativas = tarefa.tentativas + 1;
 
   if (tentativas < TENTATIVAS_ATE_ESCALAR) {
+    // Zera o contador ao repetir. `passos` aqui é o total acumulado desta
+    // tentativa — no caso mais comum de falha, ele já bateu no teto (é assim
+    // que a tarefa chegou aqui). `carregarOuCriarExecucao` abre uma conversa
+    // NOVA a cada retentativa, mas o runner lê o orçamento de
+    // `tarefa.passos`: gravar o valor velho de volta fazia o primeiro passo
+    // da tentativa seguinte encontrar `passos >= tetoPassos` de novo, falhar
+    // sem sequer chamar o modelo, e consumir a tentativa à toa. Na prática,
+    // TENTATIVAS_ATE_ESCALAR = 3 dava UMA chance real e duas falhas
+    // automáticas — descoberto em 12/09/2026 auditando por que toda tarefa
+    // que precisava de mais de `teto_passos_tarefa` passos escalava sempre
+    // com exatamente essa mensagem, nunca com um motivo diferente.
     await supabase
       .from("tarefas")
-      .update({ status: "pendente", tentativas, passos, lock_ate: null })
+      .update({ status: "pendente", tentativas, passos: 0, lock_ate: null })
       .eq("id", tarefa.id);
 
     await registrarLog(supabase, {
