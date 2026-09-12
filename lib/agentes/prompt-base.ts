@@ -28,7 +28,6 @@ export function montarPromptBase(ctx: ContextoDoPrompt): string {
     superior,
     colegas,
     meta,
-    ferramentasDisponiveis,
     ferramentasQueNaoTem,
     skillsDisponiveis,
     memoria,

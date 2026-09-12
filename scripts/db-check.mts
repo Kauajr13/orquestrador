@@ -5,8 +5,6 @@
 // ao banco o que ele tem hoje, não confiar que um `db:migrate` anterior deu
 // certo.
 
-import { resolve as _resolve } from "node:path";
-
 const TABELAS_ESPERADAS = [
   "times",
   "agentes",
