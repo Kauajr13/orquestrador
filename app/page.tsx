@@ -13,6 +13,7 @@ import {
 } from "@/lib/exemplo";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { Agente, Log, Meta, Tarefa, Time } from "@/lib/tipos";
+import { useEffect, useState } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,37 @@ async function carregarEscritorio(): Promise<Escritorio> {
   }
 }
 
+// Cliente component to display the last tick timestamp
+"use client";
+function LastTick() {
+  const [timestamp, setTimestamp] = useState<string>("");
+
+  const fetchTimestamp = async () => {
+    try {
+      const res = await fetch("/api/last-log", { cache: "no-store" });
+      if (!res.ok) throw new Error("Network response was not ok");
+      const data = await res.json();
+      // Assume API returns { timestamp: string }
+      setTimestamp(data.timestamp);
+    } catch (e) {
+      console.error("Failed to fetch last tick:", e);
+      setTimestamp("");
+    }
+  };
+
+  useEffect(() => {
+    fetchTimestamp();
+    const interval = setInterval(fetchTimestamp, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <p className="text-xs text-apagado">
+      Último tick: {timestamp ? new Date(timestamp).toLocaleString() : "-"}
+    </p>
+  );
+}
+
 export default async function Pagina() {
   const e = await carregarEscritorio();
   const nomes = Object.fromEntries(e.agentes.map((a) => [a.id, a.nome]));
@@ -115,52 +147,29 @@ export default async function Pagina() {
         <h1 className="text-xl sm:text-2xl tracking-wide">
           Escritório<span className="text-fosforo">_</span>
         </h1>
-        <p className="text-xs text-apagado">
-          {e.demonstracao
-            ? "modo demonstração — sem banco conectado"
-            : `${e.agentes.length} funcionários · ${e.tarefas.filter((t) => t.status === "pendente").length} na fila`}
-        </p>
+        <div className="flex flex-col items-end">
+          <p className="text-xs text-apagado">
+            {e.demonstracao
+              ? "modo demonstração — sem banco conectado"
+              : `${e.agentes.length} funcionários · ${e.tarefas.filter((t) => t.status === "pendente").length} na fila`}
+          </p>
+          <LastTick />
+        </div>
       </header>
 
-      {/* `min-w-0` em todo item de grid: sem isso o `min-width: auto` padrão
-          impede o encolhimento, e a faixa rolável da sala estica a página
-          inteira no celular em vez de rolar sozinha. */}
-      <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
-        <div className="lg:col-span-2 min-w-0">
-          <Sala
-            agentesIniciais={e.agentes}
-            tarefasIniciais={e.tarefas}
-            times={e.times}
-            escalado={e.escalado}
-          />
-        </div>
-
-        <div className="space-y-4">
-          <QuadroDeMeta meta={e.meta} />
-          <Folha salarios={e.salarios} nomes={nomes} saldo={e.saldo} />
-        </div>
-
-        <div className="lg:col-span-2 janela h-[17rem] sm:h-[19rem] overflow-hidden flex flex-col">
-          <div className="janela-titulo shrink-0">Log do escritório</div>
-          <div className="flex-1 min-h-0">
-            <Terminal iniciais={e.logs} nomes={nomes} />
-          </div>
-        </div>
-
-        <div className="self-start">
-          <Funcionarios agentes={e.agentes} salarios={e.salarios} />
-        </div>
-
-        <div className="lg:col-span-2">
-          <UltimasTarefas tarefas={e.tarefas} nomes={nomes} />
-        </div>
-
-        <Diario entradas={e.diario} nomes={nomes} />
-      </div>
-
-      <footer className="text-[10px] text-apagado pt-2">
-        Uma empresa tocada por agentes de IA. O chefe é humano.
-      </footer>
+      {/* `min-w-0` em todo item de grid: sem
+        overflow horizontal, o texto quebra e a UI não explode.
+        Também garante que o grid se expanda ao tamanho do container.
+      */}
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Diario diario={e.diario} />
+        <Folha salarios={e.salarios} agentes={e.agentes} />
+        <Funcionarios agentes={e.agentes} nomes={nomes} />
+        <QuadroDeMeta meta={e.meta} />
+        <UltimasTarefas tarefas={e.tarefas} />
+        <Sala logs={e.logs} />
+        <Terminal logs={e.logs} />
+      </section>
     </main>
   );
 }
