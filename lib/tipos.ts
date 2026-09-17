@@ -1,146 +1,93 @@
-/**
- * O vocabulário da empresa. Espelha as colunas de supabase/schema.sql — quando
- * uma migration mudar uma tabela, este arquivo muda junto no mesmo PR.
- */
+/*
+  Os tipos que a aplicação troca entre camadas. Viver aqui, e nao em cada
+  arquivo, e o que impede o cache handler e o painel de interpretarem o mesmo
+  texto de modo diferente em outra iteraao.
+*/
 
-export type StatusAgente = "idle" | "working" | "done" | "error" | "descansando";
+export type PapelAgente =
+  | "fundador"  // Kaua e a unica pessoa humana com acesso direta e faz as aprovaofinal
+  | "gestor"    // coordena turnos, faz triagem, prorroga contratos
+  | "fundador"  // Kaua e a unica pessoa humana com acesso direta e faz as aprovaoefinais
+  | "dev"
+  | "revisor"
+  | "seguranca";
 
-export type StatusTarefa =
-  | "pendente"
-  | "em_andamento"
-  | "em_revisao"
-  | "mudancas_pedidas"
-  | "aprovada"
-  | "concluida"
-  | "falhou"
-  | "bloqueada";
+export type StatusAgente = "ativo" | "pausado" | "contrato_terminou";
 
-export type NivelLog = "info" | "warn" | "erro" | "sucesso";
-
-export type Agente = {
+export interface Agente {
   id: string;
   nome: string;
-  papel: string;
-  prompt: string;
-  superior_id: string | null;
-  time_id: string | null;
+  papel: PapelAgente;
   status: StatusAgente;
-  ferramentas: string[];
-  skills: string[];
-  sprite: string;
-  modelo: string | null;
-  ativo: boolean;
   criado_em: string;
-  contratado_por: string | null;
-};
+}
 
-export type Time = {
-  id: string;
-  nome: string;
-  lider_id: string | null;
-  criado_em: string;
-};
-
-export type Tarefa = {
+export interface Tarefa {
   id: string;
   titulo: string;
   descricao: string;
-  status: StatusTarefa;
-  agente_id: string | null;
-  atribuida_por: string | null;
-  escalada_para: string | null;
-  executor: "nuvem" | "local";
+  status: string;
   prioridade: number;
+  agente_id: string | null;
   pr_numero: number | null;
-  pr_url: string | null;
-  branch: string | null;
-  parecer: string | null;
-  resultado: string | null;
-  tentativas: number;
-  passos: number;
-  lock_ate: string | null;
-  criado_em: string;
-  iniciado_em: string | null;
-  concluido_em: string | null;
-};
-
-export type Execucao = {
-  id: string;
-  agente_id: string;
-  tarefa_id: string | null;
-  conversa: Mensagem[];
-  /** O que este agente já leu nesta tarefa. Sobrevive entre ticks. */
-  fontes: { url: string; texto: string }[];
-  encerrada: boolean;
-  modelo: string | null;
-  tokens_entrada: number;
-  tokens_saida: number;
-  custo_estimado: number;
-  duracao_ms: number;
   criado_em: string;
   atualizado_em: string;
-};
+}
 
-export type Log = {
-  id: string;
-  agente_id: string | null;
-  tarefa_id: string | null;
-  nivel: NivelLog;
-  mensagem: string;
-  criado_em: string;
-};
+export interface LogLinha {
+  tempo: string;
+  de_quem: string;
+  o_que: string;
+  tipo: string;
+}
 
-export type Meta = {
-  id: string;
-  ordem: number;
+export interface Diario { data: string; texto: string }
+
+/*
+  A folha de ponto. E um arquivo , ne um paragrafo: e o dado bruto a partir
+  do qual o painel calcula salario real. Cada entrada e um turno de um
+  funcionario com o que ele gastou em tokens e em fatura da vez.
+*/
+
+export interface FolhaPonto {
+  tokens: number;
+  custo: number;
+}
+
+export interface Meta {
   titulo: string;
+  ordem: number;
   descricao: string;
   alvo: string;
-  ativa: boolean;
-  atingida: boolean;
-  evidencia: string | null;
-  criado_em: string;
-  atingida_em: string | null;
-};
+  evidencia?: string;
+}
 
-export type Pagina = {
-  id: string;
-  slug: string;
-  titulo: string;
-  resumo: string;
-  conteudo: string;
-  fontes: string[];
-  publicada: boolean;
-  agente_id: string | null;
-  criado_em: string;
-  atualizado_em: string;
-};
+/*
+  O estado que a pagina de escritorio recebe de uma chamada ao
+  /api/escritorio. E tudo que o painel consegue calcular a partir do banco
+  em um unico instante e sem chamada extra.
+*/
+export interface EstadoEscritorio {
+  fundacao: string |
+  null;
+  agentes: Agente[];
+  tarefas: Tarefa[];
+  folha: Record<string, FolhaPonto>;
+  meta: Meta | null;
+  diario: Diario[];
+  log: LogLinha[];
+}
 
-// --------------------------------------------------------------- conversa
-
-/**
- * Formato de mensagem da API de chat. Fica salvo em `execucoes.conversa` para
- * o raciocínio de um agente atravessar vários ticks: a função da Vercel morre
- * em 60s, então o próximo tick lê isto e continua em vez de recomeçar.
- */
-export type Mensagem =
-  | { role: "system"; content: string }
-  | { role: "user"; content: string }
-  | { role: "assistant"; content: string | null; tool_calls?: ChamadaDeFerramenta[] }
-  | { role: "tool"; tool_call_id: string; name: string; content: string };
-
-export type ChamadaDeFerramenta = {
-  id: string;
-  type: "function";
-  function: { name: string; arguments: string };
-};
-
-/** O que o provedor devolve num turno. */
-export type RespostaDoModelo = {
-  conteudo: string | null;
-  chamadas: ChamadaDeFerramenta[];
-  tokensEntrada: number;
-  tokensSaida: number;
-  modelo: string;
-  parou: boolean;
-};
+/*
+  O custo projetado e a estimativa de quanto a conta vai custar a mes que vir,
+  projectada a partir *do ritmo corrente*, neao do plano de subscriao real
+  (a promoa em vigor hoje distorceria qualquer calculo a partir de faturas
+  reais). Por isso a UI precisa de quatro numeros e um marco temporal.
+*/
+export interface CustoMensal {
+  custo_mensal_anterior: number;
+  custo_mensal_acumulado: number;
+  custo_mensal Projetado: number;
+  dias_no_mes: number;
+  dias_passados: number;
+}
