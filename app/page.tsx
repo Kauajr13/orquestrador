@@ -12,6 +12,7 @@ import {
   TIMES_EXEMPLO,
 } from "@/lib/exemplo";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { metaAtiva, agentePorNome, lastTick } from "@/lib/consultas-banco";
 import type { Agente, Log, Meta, Tarefa, Time } from "@/lib/tipos";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,7 @@ async function carregarEscritorio(): Promise<Escritorio> {
         .gte("criado_em", inicioDoMes.toISOString()),
       supabase.from("diario").select("*").order("dia", { ascending: false }).limit(6),
       saldoDisponivel(supabase),
-    ]);
+    ] as const);
 
     const salarios: Record<string, { tokens: number; custo: number }> = {};
     for (const e of execucoes.data ?? []) {
@@ -83,84 +84,4 @@ async function carregarEscritorio(): Promise<Escritorio> {
       };
     }
 
-    const listaDeTarefas = (tarefas.data ?? []) as Tarefa[];
-
-    return {
-      demonstracao: false,
-      agentes: (agentes.data ?? []) as Agente[],
-      times: (times.data ?? []) as Time[],
-      tarefas: listaDeTarefas,
-      // O terminal lê de baixo para cima; o banco devolve do mais novo.
-      logs: ((logs.data ?? []) as Log[]).slice().reverse(),
-      meta: ((metas.data ?? [])[0] as Meta) ?? null,
-      salarios,
-      diario: (diario.data ?? []) as Escritorio["diario"],
-      saldo,
-      escalado: listaDeTarefas.some((t) => t.status === "bloqueada"),
-    };
-  } catch {
-    // Banco fora do ar não pode derrubar o painel: é justamente quando o Kauã
-    // mais precisa olhar para a tela.
-    return demo;
-  }
-}
-
-export default async function Pagina() {
-  const e = await carregarEscritorio();
-  const nomes = Object.fromEntries(e.agentes.map((a) => [a.id, a.nome]));
-
-  return (
-    <main className="flex-1 p-3 sm:p-5 max-w-[1400px] w-full mx-auto space-y-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h1 className="text-xl sm:text-2xl tracking-wide">
-          Escritório<span className="text-fosforo">_</span>
-        </h1>
-        <p className="text-xs text-apagado">
-          {e.demonstracao
-            ? "modo demonstração — sem banco conectado"
-            : `${e.agentes.length} funcionários · ${e.tarefas.filter((t) => t.status === "pendente").length} na fila`}
-        </p>
-      </header>
-
-      {/* `min-w-0` em todo item de grid: sem isso o `min-width: auto` padrão
-          impede o encolhimento, e a faixa rolável da sala estica a página
-          inteira no celular em vez de rolar sozinha. */}
-      <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
-        <div className="lg:col-span-2 min-w-0">
-          <Sala
-            agentesIniciais={e.agentes}
-            tarefasIniciais={e.tarefas}
-            times={e.times}
-            escalado={e.escalado}
-          />
-        </div>
-
-        <div className="space-y-4">
-          <QuadroDeMeta meta={e.meta} />
-          <Folha salarios={e.salarios} nomes={nomes} saldo={e.saldo} />
-        </div>
-
-        <div className="lg:col-span-2 janela h-[17rem] sm:h-[19rem] overflow-hidden flex flex-col">
-          <div className="janela-titulo shrink-0">Log do escritório</div>
-          <div className="flex-1 min-h-0">
-            <Terminal iniciais={e.logs} nomes={nomes} />
-          </div>
-        </div>
-
-        <div className="self-start">
-          <Funcionarios agentes={e.agentes} salarios={e.salarios} />
-        </div>
-
-        <div className="lg:col-span-2">
-          <UltimasTarefas tarefas={e.tarefas} nomes={nomes} />
-        </div>
-
-        <Diario entradas={e.diario} nomes={nomes} />
-      </div>
-
-      <footer className="text-[10px] text-apagado pt-2">
-        Uma empresa tocada por agentes de IA. O chefe é humano.
-      </footer>
-    </main>
-  );
-}
+    let
