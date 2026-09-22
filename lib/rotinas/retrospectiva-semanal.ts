@@ -1,4 +1,5 @@
 export async function executarRetrospectivaSemanal(): Promise<void> {
+  // TODO: implementar lógica da retrospectiva semanal (tarefa separada)
   // Etapa 1: coletar dados necessários para a retrospectiva
   const dados = await coletarDadosRetrospectiva();
 
