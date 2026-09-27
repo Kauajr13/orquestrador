@@ -1,3 +1,6 @@
+
+import { pausarAutomatica } from './pausa-automatica';
+
 export async function executarRetrospectivaSemanal(): Promise<void> {
   // Etapa 1: coletar dados necessários para a retrospectiva
   const dados = await coletarDadosRetrospectiva();
@@ -5,8 +8,9 @@ export async function executarRetrospectivaSemanal(): Promise<void> {
   // Etapa 2: gerar relatório a partir dos dados coletados
   await gerarRelatorioRetrospectiva(dados);
 
-  // Etapa 3: pausar automaticamente a rotina, se necessário
-  await pausarRetrospectiva();
+  // Etapa 3: pausar automaticamente a rotina, se necessário,
+  // interrompendo e registrando a pausa após o envio do relatório
+  await pausarAutomatica();
 }
 
 /**
@@ -27,15 +31,5 @@ async function coletarDadosRetrospectiva(): Promise<Record<string, unknown>> {
 async function gerarRelatorioRetrospectiva(dados: Record<string, unknown>): Promise<void> {
   // TODO: transformar `dados` em relatório (por exemplo, PDF, markdown) e salvar
   // Por enquanto, nenhuma ação concreta.
-  return;
-}
-
-/**
- * Executa a lógica de pausa automática após a geração do relatório.
- * Pode ser utilizada para aguardar feedback ou suspender a rotina até a próxima semana.
- */
-async function pausarRetrospectiva(): Promise<void> {
-  // TODO: implementar mecanismo de pausa (ex.: agendamento, flag de controle)
-  // Por enquanto, simplesmente termina.
   return;
 }
