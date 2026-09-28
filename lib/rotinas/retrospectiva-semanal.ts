@@ -36,3 +36,40 @@ async function coletarDadosRetrospectiva(): Promise<Record<string, unknown>> {
   // TODO: integrar com camada de persistência para obter dados reais
   return {};
 }
+
+/**
+ * Estrutura do relatório da retrospectiva semanal.
+ * Objetivo: serializável para JSON, legível e com os três campos obrigatórios
+ * definidos pela tarefa: `conquistas`, `lacunas` e `atencao`.
+ */
+export interface RelatorioRetrospectiva {
+  /** Data-base da semana analisada (ISO 8601). */
+  data: string;
+  /** Resumo numérico da semana, para referência rápida. */
+  resumo: {
+    totalTarefas: number;
+    totalLogs: number;
+    totalRetrospectivas: number;
+    tarefasConcluidas: number;
+  };
+  /** Conquistas mais relevantes da semana. */
+  conquistas: string[];
+  /** Lacunas identificadas: áreas que ficaram para trás ou sem avanço. */
+  lacunas: string[];
+  /** Pontos de atenção: riscos ou pendências para a próxima semana. */
+  atencao: string[];
+}
+
+/**
+ * Gera o relatório da retrospectiva semanal.
+ *
+ * Recebe o objeto de dados retornado por `coletarDadosRetrospectiva()` e
+ * produz um relatório estruturado, serializável, pronto para ser apresentado
+ * ou persistido. Os três campos obrigatórios (`conquistas`, `lacunas` e
+ * `atencao`) sempre existem no resultado, ainda que vazios.
+ *
+ * A implementação é modular: cada campo é produzido por uma função menor
+ * (ver `extrairConquistas`, `extrairLacunas`, `extrairAtencao`), o que torna
+ * fácil revisar e expandir a lógica de formatação sem modificar o restante.
+ */
+export function gerarRelatorio(d
