@@ -5,34 +5,25 @@ export async function executarRetrospectivaSemanal(): Promise<void> {
   // Etapa 2: logar resumo dos dados coletados (analogias: contagem de tarefas, logs e retrospectivas)
   const resumo = extrairResumo(dados);
   console.log(
-    `[Retrospectiva Semanal] Dados coletados: ${resumo.totalTarefas} tarefa(s), ${resumo.totalLogs} log(s), ${resumo.totalRetrospectivas} retrospectiva(s).`
+    `[Retrospectiva S
+[…resultado anterior, encurtado]`
   );
 
-  // Etapa 3: análise dos dados — deixada para etapas futuras.
-  // await analisarDadosRetrospectiva(dados);
-}
+  // TODO: tratamento de erros
 
-/**
- * Extrai do objeto retornado pela coleta as contagens usadas no log de resumo.
- * O stub atual de `coletarDadosRetrospectiva` retorna um objeto vazio, então
- * todas as contagens são zero. Assinaturas que venham com contagens reais
- * já serão lidas aqui.
- */
-function extrairResumo(dados: Record<string, unknown>): { totalTarefas: number; totalLogs: number; totalRetrospectivas: number } {
-  return {
-    totalTarefas: typeof dados.totalTarefas === 'number' ? dados.totalTarefas : 0,
-    totalLogs: typeof dados.totalLogs === 'number' ? dados.totalLogs : 0,
-    totalRetrospectivas: typeof dados.totalRetrospectivas === 'number' ? dados.totalRetrospectivas : 0,
-  };
-}
+  // Integrar pausa automática
+  // Verifica inatividade a cada 5 minutos e pausa se necessário
+  import { pausarAutomatica as pauseAutomatica } from "./pausa-automatica";
+  const intervalo = setInterval(async () => {
+    // Placeholder: sempre checa pausa; lógica real de inatividade será implementada depois
+    const devePausar = await pauseAutomatica();
+    if (devePausar) {
+      // Suspende a execução até nova atividade (simulada com timeout de 1 segundo)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }, 5 * 60 * 1000);
 
-/**
- * Coleta os dados relevantes da semana corrente.
- * Atualmente é um stub que retorna um objeto vazio.
- * Futuras implementações deverão buscar informações no banco, analisar progresso
- * nas metas, e outros indicadores.
- */
-async function coletarDadosRetrospectiva(): Promise<Record<string, unknown>> {
-  // TODO: integrar com camada de persistência para obter dados reais
-  return {};
+  // A rotina pode continuar aqui ou encerrar; limpando o intervalo ao fim
+  // Por ora, não há lógica adicional, então limpamos imediatamente para evitar timers pendentes
+  clearInterval(intervalo);
 }
